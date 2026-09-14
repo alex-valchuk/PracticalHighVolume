@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/FlightPlatform.ServiceDefaults/FlightPlatform.ServiceDefaults.csproj" />
+    <Project Path="src/BuildingBlocks/FlightsPlatform.Application.Abstractions/FlightsPlatform.Application.Abstractions.csproj" />
+    <Project Path="src/BuildingBlocks/FlightsPlatform.SharedKernel/FlightsPlatform.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Hosts/">
+    <Project Path="src/Hosts/FlightsPlatform.Api/FlightsPlatform.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/FlightCatalog/">
+    <Project Path="src/Modules/FlightCatalog/FlightCatalog.Api/FlightCatalog.Api.csproj" />
+    <Project Path="src/Modules/FlightCatalog/FlightCatalog.Application/FlightCatalog.Application.csproj" />
+    <Project Path="src/Modules/FlightCatalog/FlightCatalog.Domain/FlightCatalog.Domain.csproj" />
+    <Project Path="src/Modules/FlightCatalog/FlightCatalog.Infrastructure/FlightCatalog.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FlightCatalog.UnitTests/FlightCatalog.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>FlightCatalog.Domain</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\FlightsPlatform.SharedKernel\FlightsPlatform.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

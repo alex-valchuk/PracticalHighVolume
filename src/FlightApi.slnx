@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="FlightApi/FlightApi.csproj" />
-  <Project Path="FlightApi.AppHost/FlightApi.AppHost.csproj" Id="86abd27d-a2e1-428f-83c1-8ee161d946bd" />
-  <Project Path="FlightApi.ServiceDefaults/FlightApi.ServiceDefaults.csproj" />
-</Solution>
