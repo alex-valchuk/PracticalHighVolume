@@ -23,12 +23,11 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Connection string 'BookingsSource' is not configured.");
 
         services.AddDbContext<FlightCatalogDbContext>(opts =>
-            opts.UseNpgsql(ownConnection));
+            opts.UseNpgsql(ownConnection, npgsql =>
+                npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "flight_catalog")));
 
-        // Own data source (read side)
         services.AddSingleton<NpgsqlDataSource>(sp => NpgsqlDataSource.Create(ownConnection));
 
-        // External source data source (ACL read-only)
         services.AddKeyedSingleton<NpgsqlDataSource>("bookings",
             (sp, key) => NpgsqlDataSource.Create(externalConnection));
 
