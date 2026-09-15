@@ -9,6 +9,12 @@
     <Project Path="src/Hosts/FlightsPlatform.Api/FlightsPlatform.Api.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Bookings/">
+    <Project Path="src/Modules/Bookings/Bookings.Api/Bookings.Api.csproj" />
+    <Project Path="src/Modules/Bookings/Bookings.Application/Bookings.Application.csproj" />
+    <Project Path="src/Modules/Bookings/Bookings.Domain/Bookings.Domain.csproj" />
+    <Project Path="src/Modules/Bookings/Bookings.Infrastructure/Bookings.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/FlightCatalog/">
     <Project Path="src/Modules/FlightCatalog/FlightCatalog.Api/FlightCatalog.Api.csproj" />
     <Project Path="src/Modules/FlightCatalog/FlightCatalog.Application/FlightCatalog.Application.csproj" />
@@ -16,6 +22,7 @@
     <Project Path="src/Modules/FlightCatalog/FlightCatalog.Infrastructure/FlightCatalog.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Bookings.UnitTests/Bookings.UnitTests.csproj" />
     <Project Path="tests/FlightCatalog.UnitTests/FlightCatalog.UnitTests.csproj" />
   </Folder>
 </Solution>

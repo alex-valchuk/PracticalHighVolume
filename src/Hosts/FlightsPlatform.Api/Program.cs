@@ -1,3 +1,7 @@
+using Bookings.Api;
+using Bookings.Application;
+using Bookings.Infrastructure;
+using Bookings.Infrastructure.Persistence;
 using FlightCatalog.Api;
 using FlightCatalog.Application;
 using FlightCatalog.Infrastructure;
@@ -16,6 +20,9 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddFlightCatalogApplication();
 builder.Services.AddFlightCatalogInfrastructure(builder.Configuration);
+
+builder.Services.AddBookingsApplication();
+builder.Services.AddBookingsInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -52,14 +59,15 @@ app.UseHttpsRedirection();
 app.MapControllers();
 app.MapFlightCatalogEndpoints();
 app.MapAirportEndpoints();
+app.MapBookingsEndpoints();
 
-// Apply migrations at startup.
-// NOTE: convenient for local development. In production, migrations
-// are applied by CI/CD with a dedicated role that has DDL rights.
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<FlightCatalogDbContext>();
-    await db.Database.MigrateAsync();
+    var fcDb = scope.ServiceProvider.GetRequiredService<FlightCatalogDbContext>();
+    await fcDb.Database.MigrateAsync();
+
+    var bkDb = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
+    await bkDb.Database.MigrateAsync();
 }
 
 app.Run();
