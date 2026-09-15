@@ -1,4 +1,6 @@
 using FlightCatalog.Application.Abstractions;
+using FlightCatalog.Infrastructure.BackgroundServices;
+using FlightCatalog.Infrastructure.Integration.Bookings;
 using FlightCatalog.Infrastructure.Persistence;
 using FlightCatalog.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -14,18 +16,36 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("FlightCatalog")
-            ?? throw new InvalidOperationException(
-                "Connection string 'FlightCatalog' is not configured.");
+        var ownConnection = configuration.GetConnectionString("FlightCatalog")
+            ?? throw new InvalidOperationException("Connection string 'FlightCatalog' is not configured.");
 
-        services.AddSingleton(NpgsqlDataSource.Create(connectionString));
+        var externalConnection = configuration.GetConnectionString("BookingsSource")
+            ?? throw new InvalidOperationException("Connection string 'BookingsSource' is not configured.");
 
         services.AddDbContext<FlightCatalogDbContext>(opts =>
-            opts.UseNpgsql(connectionString));
+            opts.UseNpgsql(ownConnection));
+
+        // Own data source (read side)
+        services.AddSingleton<NpgsqlDataSource>(sp => NpgsqlDataSource.Create(ownConnection));
+
+        // External source data source (ACL read-only)
+        services.AddKeyedSingleton<NpgsqlDataSource>("bookings",
+            (sp, key) => NpgsqlDataSource.Create(externalConnection));
 
         services.AddScoped<IFlightRepository, FlightRepository>();
         services.AddScoped<IFlightReadRepository, FlightReadRepository>();
+        services.AddScoped<IAirportRepository, AirportRepository>();
+        services.AddScoped<IAirportReadRepository, AirportReadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddScoped<IBookingsSourceReader>(sp =>
+        {
+            var ds = sp.GetRequiredKeyedService<NpgsqlDataSource>("bookings");
+            return new BookingsSourceReader(ds);
+        });
+
+        services.Configure<AirportSyncOptions>(configuration.GetSection(AirportSyncOptions.SectionName));
+        services.AddHostedService<AirportSyncBackgroundService>();
 
         return services;
     }

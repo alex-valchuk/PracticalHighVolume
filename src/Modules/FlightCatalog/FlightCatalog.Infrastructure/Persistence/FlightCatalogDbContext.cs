@@ -11,6 +11,7 @@ public sealed class FlightCatalogDbContext : DbContext
         : base(options) { }
 
     public DbSet<Flight> Flights => Set<Flight>();
+    public DbSet<Airport> Airports => Set<Airport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

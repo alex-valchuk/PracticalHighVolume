@@ -4,6 +4,8 @@ using FlightCatalog.Infrastructure;
 using FlightCatalog.Infrastructure.Persistence;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using FlightsPlatform.SharedKernel;
 
@@ -31,8 +33,11 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     var (status, payload) = ex switch
     {
         ValidationException ve => (StatusCodes.Status400BadRequest,
-            (object)new { error = "validation_failed",
-                          details = ve.Errors.Select(e => e.ErrorMessage) }),
+            (object)new
+            {
+                error = "validation_failed",
+                details = ve.Errors.Select(e => e.ErrorMessage)
+            }),
         DomainException de => (StatusCodes.Status400BadRequest,
             new { error = "domain_error", message = de.Message }),
         _ => (StatusCodes.Status500InternalServerError,
@@ -46,11 +51,15 @@ app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
 app.UseHttpsRedirection();
 app.MapControllers();
 app.MapFlightCatalogEndpoints();
+app.MapAirportEndpoints();
 
+// Apply migrations at startup.
+// NOTE: convenient for local development. In production, migrations
+// are applied by CI/CD with a dedicated role that has DDL rights.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FlightCatalogDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    await db.Database.MigrateAsync();
 }
 
 app.Run();
