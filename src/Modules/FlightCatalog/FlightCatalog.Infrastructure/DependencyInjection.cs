@@ -34,8 +34,17 @@ public static class DependencyInjection
         services.AddScoped<IFlightRepository, FlightRepository>();
         services.AddScoped<IFlightReadRepository, FlightReadRepository>();
         services.AddScoped<IAirportRepository, AirportRepository>();
-        services.AddScoped<IAirportReadRepository, AirportReadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Airport read path: cached decorator over the Dapper repository.
+        services.AddScoped<AirportReadRepository>();
+        services.AddScoped<IAirportReadRepository>(sp =>
+        {
+            var inner = sp.GetRequiredService<AirportReadRepository>();
+            var cache = sp.GetRequiredService<FlightsPlatform.Application.Abstractions.ICacheService>();
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<CachedAirportReadRepository>>();
+            return new CachedAirportReadRepository(inner, cache, logger);
+        });
 
         services.AddScoped<IBookingsSourceReader>(sp =>
         {

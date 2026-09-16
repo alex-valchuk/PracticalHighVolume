@@ -3,6 +3,7 @@
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/FlightPlatform.ServiceDefaults/FlightPlatform.ServiceDefaults.csproj" />
     <Project Path="src/BuildingBlocks/FlightsPlatform.Application.Abstractions/FlightsPlatform.Application.Abstractions.csproj" />
+    <Project Path="src/BuildingBlocks/FlightsPlatform.Infrastructure.Redis/FlightsPlatform.Infrastructure.Redis.csproj" />
     <Project Path="src/BuildingBlocks/FlightsPlatform.SharedKernel/FlightsPlatform.SharedKernel.csproj" />
   </Folder>
   <Folder Name="/src/Hosts/">

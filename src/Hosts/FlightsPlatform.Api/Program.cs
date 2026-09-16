@@ -7,6 +7,7 @@ using FlightCatalog.Application;
 using FlightCatalog.Infrastructure;
 using FlightCatalog.Infrastructure.Persistence;
 using FlightsPlatform.Api.Endpoints;
+using FlightsPlatform.Infrastructure.Redis;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.OpenApi;
@@ -28,6 +29,9 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
+// Shared cross-cutting infrastructure.
+builder.Services.AddRedisInfrastructure(builder.Configuration);
 
 builder.Services.AddFlightCatalogApplication();
 builder.Services.AddFlightCatalogInfrastructure(builder.Configuration);

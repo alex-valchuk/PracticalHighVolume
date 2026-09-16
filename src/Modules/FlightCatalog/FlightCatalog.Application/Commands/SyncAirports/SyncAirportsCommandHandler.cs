@@ -13,17 +13,20 @@ public sealed class SyncAirportsCommandHandler : IRequestHandler<SyncAirportsCom
     private readonly IBookingsSourceReader _source;
     private readonly IAirportRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICacheService _cache;
     private readonly ILogger<SyncAirportsCommandHandler> _logger;
 
     public SyncAirportsCommandHandler(
         IBookingsSourceReader source,
         IAirportRepository repository,
         IUnitOfWork unitOfWork,
+        ICacheService cache,
         ILogger<SyncAirportsCommandHandler> logger)
     {
         _source = source;
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -63,6 +66,10 @@ public sealed class SyncAirportsCommandHandler : IRequestHandler<SyncAirportsCom
         }
 
         await _unitOfWork.SaveChangesAsync(ct);
+
+        // Invalidate all airport cache entries: reference data changed.
+        await _cache.RemoveByPrefixAsync(CacheKeys.AirportPrefix, ct);
+        _logger.LogInformation("Airport cache invalidated after sync");
 
         var result = new SyncAirportsResult(external.Count, created, updated, skipped);
         _logger.LogInformation(
