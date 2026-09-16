@@ -105,11 +105,32 @@ architect-level engineering.
 
 ## Screenshots
 
-> Coming soon: dashboard, airports, flights list, booking details with saga
-> success, booking details with saga compensation. Will be added after the
-> final UI polish.
+### Dashboard
+
+![Dashboard overview](docs/screenshots/dashboard.png)
+
+_Live counters from both bounded contexts: flights, airports, bookings, active bookings._
+
+### Airports
+
+![Airports list](docs/screenshots/airports.png)
+
+_Reference data synchronized from the external bookings database via ACL._
+
+### Flights
+
+![Flights list](docs/screenshots/flights.png)
+
+_Search by route and date. Delay and Cancel actions._
+
+### Bookings
+
+![Bookings list](docs/screenshots/bookings.png)
+
+_List of bookings with status and quick actions._
 
 ---
+
 
 ## Architecture
 
