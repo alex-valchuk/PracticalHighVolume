@@ -3,7 +3,7 @@
 | Field           | Value                                    |
 |-----------------|------------------------------------------|
 | Spec ID         | SPEC-004                                 |
-| Status          | Draft - awaiting approval                |
+| Status          | Accepted                                 |
 | Phase           | 4                                        |
 | Created         | 2026-09-16                               |
 | Depends on      | SPEC-003.2 (Booking Saga)                |
