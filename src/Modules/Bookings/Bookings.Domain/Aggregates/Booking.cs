@@ -57,6 +57,87 @@ public sealed class Booking : AggregateRoot<Guid>
         return booking;
     }
 
+    public Guid AddTicket(
+        PassengerId passengerId,
+        PassengerName passengerName,
+        Guid flightId,
+        decimal amount)
+    {
+        if (Status != BookingStatus.Pending)
+            throw new DomainException(
+                "Cannot add a ticket to a booking that is not Pending. Current status: " + Status);
+
+        if (flightId == Guid.Empty)
+            throw new DomainException("FlightId is required.");
+
+        if (amount <= 0)
+            throw new DomainException("Ticket amount must be positive.");
+
+        var duplicate = _tickets.Any(t =>
+            t.FlightId == flightId && t.PassengerId == passengerId);
+
+        if (duplicate)
+            throw new DomainException(
+                "Passenger " + passengerId.Value + " is already on flight " + flightId);
+
+        var ticketNo = Guid.NewGuid().ToString("N").Substring(0, 13);
+        var ticket = new Ticket(
+            Guid.NewGuid(),
+            ticketNo,
+            passengerId,
+            passengerName,
+            flightId,
+            amount);
+
+        _tickets.Add(ticket);
+
+        TotalAmount = TotalAmount.Add(Money.Create(amount, TotalAmount.Currency));
+
+        Raise(new TicketAdded(
+            Id,
+            ticket.Id,
+            flightId,
+            amount,
+            TotalAmount.Currency));
+
+        return ticket.Id;
+    }
+
+    public void Confirm()
+    {
+        if (Status == BookingStatus.Confirmed)
+            throw new DomainException("Booking is already confirmed.");
+
+        if (Status != BookingStatus.Pending)
+            throw new DomainException(
+                "Cannot confirm a booking in status " + Status + ".");
+
+        if (_tickets.Count == 0)
+            throw new DomainException("Cannot confirm a booking without tickets.");
+
+        Status = BookingStatus.Confirmed;
+
+        Raise(new BookingConfirmed(
+            Id,
+            BookRef.Value,
+            TotalAmount.Amount,
+            TotalAmount.Currency));
+    }
+
+    public void MarkExpired(string reason)
+    {
+        if (Status != BookingStatus.Pending)
+            throw new DomainException(
+                "Cannot expire a booking in status " + Status + ".");
+
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new DomainException("Expiration reason is required.");
+
+        Status = BookingStatus.Expired;
+
+        Raise(new BookingExpired(Id, BookRef.Value, reason));
+    }
+
     public void Cancel(string reason)
     {
         if (Status == BookingStatus.Cancelled)

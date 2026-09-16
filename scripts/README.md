@@ -1,0 +1,1 @@
+All this scripts has been executed from root dir

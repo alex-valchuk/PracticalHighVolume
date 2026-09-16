@@ -50,7 +50,13 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             t.WithOwner().HasForeignKey("booking_id");
             t.HasKey(x => x.Id);
 
-            t.Property(x => x.Id).HasColumnName("id");
+            // KEY FIX: the Id is generated in code, not by the database.
+            // Without ValueGeneratedNever, EF Core treats the new entity as
+            // "modified" and issues UPDATE instead of INSERT.
+            t.Property(x => x.Id)
+                .HasColumnName("id")
+                .ValueGeneratedNever();
+
             t.Property(x => x.TicketNo).HasColumnName("ticket_no").HasMaxLength(20).IsRequired();
             t.Property(x => x.FlightId).HasColumnName("flight_id").IsRequired();
             t.Property(x => x.Amount).HasColumnName("amount").HasPrecision(18, 2).IsRequired();

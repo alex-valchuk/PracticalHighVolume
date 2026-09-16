@@ -1,4 +1,5 @@
 using Bookings.Application.Abstractions;
+using Bookings.Infrastructure.Integration.FlightCatalog;
 using Bookings.Infrastructure.Persistence;
 using Bookings.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IBookingReadRepository, BookingReadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Cross-module adapter (see ADR-005 and SPEC-003.2 AD-3).
+        services.AddScoped<IFlightCatalogClient, FlightCatalogClient>();
 
         return services;
     }

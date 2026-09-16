@@ -16,5 +16,7 @@ public sealed class BookingRepository : IBookingRepository
     public async Task AddAsync(Booking booking, CancellationToken ct = default)
         => await _db.Bookings.AddAsync(booking, ct);
 
+    // Keep Update() for command handlers that load a detached aggregate.
+    // For tracked aggregates (like AddTicket), callers should NOT call Update().
     public void Update(Booking booking) => _db.Bookings.Update(booking);
 }
