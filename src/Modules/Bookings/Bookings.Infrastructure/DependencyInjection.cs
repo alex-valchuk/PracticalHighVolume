@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IFlightCatalogClient, FlightCatalogClient>();
 
         services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
+        services.AddSingleton<PaymentSimulationState>();
         services.AddScoped<ISeatReservationService, SeatReservationService>();
         services.AddScoped<IPaymentGateway, FakePaymentGateway>();
 

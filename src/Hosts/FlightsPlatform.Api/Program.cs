@@ -6,6 +6,7 @@ using FlightCatalog.Api;
 using FlightCatalog.Application;
 using FlightCatalog.Infrastructure;
 using FlightCatalog.Infrastructure.Persistence;
+using FlightsPlatform.Api.Endpoints;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.OpenApi;
@@ -17,6 +18,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("frontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 builder.Services.AddFlightCatalogApplication();
 builder.Services.AddFlightCatalogInfrastructure(builder.Configuration);
@@ -30,6 +41,7 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.UseCors("frontend");
 }
 
 app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
@@ -60,6 +72,20 @@ app.MapControllers();
 app.MapFlightCatalogEndpoints();
 app.MapAirportEndpoints();
 app.MapBookingsEndpoints();
+app.MapDashboardEndpoints();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapAdminEndpoints();
+}
+
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok",
+    time = DateTimeOffset.UtcNow
+}))
+.WithTags("Health")
+.WithName("GetHealth");
 
 using (var scope = app.Services.CreateScope())
 {

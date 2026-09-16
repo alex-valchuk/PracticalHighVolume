@@ -4,6 +4,7 @@ using Bookings.Application.Commands.CancelBooking;
 using Bookings.Application.Commands.ConfirmBooking;
 using Bookings.Application.Commands.CreateBooking;
 using Bookings.Application.Queries.GetBookingById;
+using Bookings.Application.Queries.GetBookingsList;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -28,6 +29,23 @@ public static class BookingsEndpoints
             return result.IsSuccess
                 ? Results.Created($"/bookings/{result.Value}", new { id = result.Value })
                 : Results.BadRequest(new { error = result.Error, code = result.ErrorCode });
+        });
+
+        group.MapGet("/", async (
+            int? page,
+            int? pageSize,
+            IMediator mediator,
+            CancellationToken ct) =>
+        {
+            var result = await mediator.Send(
+                new GetBookingsListQuery(page ?? 1, pageSize ?? 100), ct);
+            return Results.Ok(new
+            {
+                items = result.Items,
+                total = result.Total,
+                page = page ?? 1,
+                pageSize = pageSize ?? 100
+            });
         });
 
         group.MapGet("/{id:guid}", async (
