@@ -22,5 +22,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/bookings/bookings.page').then(m => m.BookingsPage)
   },
+  {
+    path: 'bookings/:id',
+    loadComponent: () =>
+      import('./features/bookings/booking-details.page').then(m => m.BookingDetailsPage)
+  },
   { path: '**', redirectTo: 'dashboard' }
 ];

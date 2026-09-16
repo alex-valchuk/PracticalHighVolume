@@ -1,7 +1,6 @@
 import { Component, EventEmitter, Input, Output, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
-import { ButtonModule } from 'primeng/button';
 import { DatePickerModule } from 'primeng/datepicker';
 import { MessageService } from 'primeng/api';
 import { ApiError } from '../../core/api/models/api-error.model';
@@ -11,7 +10,7 @@ import { FlightsService } from './flights.service';
 @Component({
   selector: 'app-delay-flight-dialog',
   standalone: true,
-  imports: [FormsModule, DialogModule, ButtonModule, DatePickerModule],
+  imports: [FormsModule, DialogModule, DatePickerModule],
   template: `
     <p-dialog
       header="Delay flight"
@@ -34,11 +33,18 @@ import { FlightsService } from './flights.service';
       </div>
 
       <ng-template #footer>
-        <button pButton type="button" label="Cancel" severity="secondary"
-                (click)="visible = false"></button>
-        <button pButton type="button" label="Delay"
-                [loading]="saving()"
-                (click)="submit()"></button>
+        <div class="dialog-footer">
+          <button class="btn btn-secondary" type="button" (click)="visible = false">
+            <i class="pi pi-times"></i><span>Cancel</span>
+          </button>
+          <button class="btn btn-warn" type="button" [disabled]="saving()" (click)="submit()">
+            @if (saving()) {
+              <i class="pi pi-spin pi-spinner"></i><span>Saving...</span>
+            } @else {
+              <i class="pi pi-clock"></i><span>Delay</span>
+            }
+          </button>
+        </div>
       </ng-template>
     </p-dialog>
   `,
@@ -46,6 +52,7 @@ import { FlightsService } from './flights.service';
     .hint { color: var(--text-muted); margin: 0 0 1rem; }
     .form-grid { display: grid; grid-template-columns: 140px 1fr; gap: 0.75rem 1rem; align-items: center; padding: 0.5rem 0; }
     .form-grid label { color: var(--text-muted); font-size: 0.9rem; }
+    .dialog-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
   `]
 })
 export class DelayFlightDialogComponent {

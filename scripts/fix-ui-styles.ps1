@@ -1,51 +1,18 @@
-@import "primeicons/primeicons.css";
+$root = (Get-Location).Path
+$stylesPath = Join-Path $root "frontend\src\styles.scss"
 
-:root {
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --primary: #3b82f6;
-  --success: #16a34a;
-  --danger: #dc2626;
-  --warning: #f59e0b;
+if (-not (Test-Path -LiteralPath $stylesPath)) {
+    Write-Host "styles.scss not found" -ForegroundColor Red
+    exit 1
 }
 
-html.dark {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --border: #334155;
-  --text: #f1f5f9;
-  --text-muted: #94a3b8;
-}
+$current = [System.IO.File]::ReadAllText($stylesPath)
 
-* { box-sizing: border-box; }
+if ($current -match '\.btn-primary') {
+    Write-Host "  .btn styles already present - skipping" -ForegroundColor Yellow
+} else {
+    $btnBlock = @'
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  transition: background 0.2s, color 0.2s;
-}
-
-button { cursor: pointer; font-family: inherit; }
-a { color: var(--primary); text-decoration: none; }
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.page-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
-.page-header .subtitle { color: var(--text-muted); margin: 0; }
-.page-header .actions { display: flex; gap: 0.5rem; align-items: center; }
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -91,3 +58,30 @@ a { color: var(--primary); text-decoration: none; }
   font-size: 0.85rem;
 }
 .btn-sm i { font-size: 0.85rem; }
+'@
+
+    $updated = $current + $btnBlock
+    [System.IO.File]::WriteAllText($stylesPath, $updated, [System.Text.UTF8Encoding]::new($false))
+    Write-Host "  + appended .btn styles to styles.scss" -ForegroundColor Green
+}
+
+Write-Host ""
+Write-Host "=== Build ==="
+
+Push-Location (Join-Path $root "frontend")
+try {
+    cmd /c "npm run build 2>&1"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "BUILD FAILED" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
+    Write-Host "  + build ok" -ForegroundColor Green
+} finally {
+    Pop-Location
+}
+
+Write-Host ""
+Write-Host "DONE. Restart frontend:" -ForegroundColor Green
+Write-Host "  cd frontend; npm start"
+Write-Host ""

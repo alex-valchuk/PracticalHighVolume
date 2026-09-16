@@ -1,3 +1,7 @@
+$root = (Get-Location).Path
+$full = Join-Path $root "frontend\src\app\features\flights\flights.page.ts"
+
+$content = @'
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
@@ -214,3 +218,33 @@ export class FlightsPage implements OnInit {
     return `${y}-${m}-${day}`;
   }
 }
+'@
+
+[System.IO.File]::WriteAllText($full, $content, [System.Text.UTF8Encoding]::new($false))
+Write-Host ("  + updated " + $full) -ForegroundColor Green
+
+Write-Host ""
+Write-Host "=== Build ==="
+
+Push-Location (Join-Path $root "frontend")
+try {
+    cmd /c "npm run build 2>&1"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "BUILD FAILED" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
+    Write-Host "  + build ok" -ForegroundColor Green
+} finally {
+    Pop-Location
+}
+
+Write-Host ""
+Write-Host "DONE. Restart frontend:" -ForegroundColor Green
+Write-Host "  cd frontend; npm start"
+Write-Host ""
+Write-Host "Check Flights page:" -ForegroundColor Yellow
+Write-Host "  - 'Create flight' button with text"
+Write-Host "  - 'Search' button with text"
+Write-Host "  - In table Actions column: 'Delay' and 'Cancel' buttons with text"
+Write-Host ""

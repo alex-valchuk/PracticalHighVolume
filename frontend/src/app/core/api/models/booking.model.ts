@@ -17,6 +17,13 @@ export interface Booking {
   tickets: Ticket[];
 }
 
+export interface BookingListResponse {
+  items: Booking[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface CreateBookingRequest {
   passengerId: string;
   passengerName: string;

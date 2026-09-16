@@ -19,7 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// CORS for Angular dev server (Development only).
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
@@ -75,7 +74,11 @@ app.MapAirportEndpoints();
 app.MapBookingsEndpoints();
 app.MapDashboardEndpoints();
 
-// Health endpoint for the SPA header indicator.
+if (app.Environment.IsDevelopment())
+{
+    app.MapAdminEndpoints();
+}
+
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "ok",

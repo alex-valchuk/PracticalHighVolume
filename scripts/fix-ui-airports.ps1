@@ -1,3 +1,7 @@
+$root = (Get-Location).Path
+$full = Join-Path $root "frontend\src\app\features\airports\airports.page.ts"
+
+$content = @'
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
@@ -135,3 +139,30 @@ export class AirportsPage implements OnInit {
     });
   }
 }
+'@
+
+[System.IO.File]::WriteAllText($full, $content, [System.Text.UTF8Encoding]::new($false))
+Write-Host ("  + updated " + $full) -ForegroundColor Green
+
+Write-Host ""
+Write-Host "=== Build ==="
+
+Push-Location (Join-Path $root "frontend")
+try {
+    cmd /c "npm run build 2>&1"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "BUILD FAILED" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
+    Write-Host "  + build ok" -ForegroundColor Green
+} finally {
+    Pop-Location
+}
+
+Write-Host ""
+Write-Host "DONE. Restart frontend:" -ForegroundColor Green
+Write-Host "  cd frontend; npm start"
+Write-Host ""
+Write-Host "Check Airports page: button should show 'Sync from source' text" -ForegroundColor Yellow
+Write-Host ""

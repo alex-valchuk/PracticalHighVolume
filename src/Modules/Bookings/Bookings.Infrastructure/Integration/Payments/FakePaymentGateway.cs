@@ -6,15 +6,11 @@ using Microsoft.Extensions.Options;
 
 namespace Bookings.Infrastructure.Integration.Payments;
 
-/// <summary>
-/// Deterministic fake payment gateway. Behaviour is driven by PaymentOptions.
-/// Persists every attempt (charged or failed) to booking.payments so that
-/// compensation and audits have durable records.
-/// </summary>
 internal sealed class FakePaymentGateway : IPaymentGateway
 {
     private readonly BookingDbContext _db;
     private readonly PaymentOptions _options;
+    private readonly PaymentSimulationState _simulation;
     private readonly ILogger<FakePaymentGateway> _logger;
 
     private static readonly Random Rng = new();
@@ -22,10 +18,12 @@ internal sealed class FakePaymentGateway : IPaymentGateway
     public FakePaymentGateway(
         BookingDbContext db,
         IOptions<PaymentOptions> options,
+        PaymentSimulationState simulation,
         ILogger<FakePaymentGateway> logger)
     {
         _db = db;
         _options = options.Value;
+        _simulation = simulation;
         _logger = logger;
     }
 
@@ -60,11 +58,13 @@ internal sealed class FakePaymentGateway : IPaymentGateway
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "FakePaymentGateway CHARGED: booking={BookingId} amount={Amount} {Currency} payment={PaymentId} ref={Ref}",
-            bookingId, amount, currency, payment.Id, reference);
+        var simulate = _simulation.SimulateFailureAfterCharge;
 
-        return new PaymentResult(true, payment.Id, null, _options.SimulateFailureAfterCharge);
+        _logger.LogInformation(
+            "FakePaymentGateway CHARGED: booking={BookingId} amount={Amount} {Currency} payment={PaymentId} ref={Ref} simulateFailure={Sim}",
+            bookingId, amount, currency, payment.Id, reference, simulate);
+
+        return new PaymentResult(true, payment.Id, null, simulate);
     }
 
     public async Task RefundAsync(Guid paymentId, CancellationToken ct = default)
