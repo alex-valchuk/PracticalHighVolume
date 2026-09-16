@@ -11,6 +11,8 @@ public sealed class BookingDbContext : DbContext
         : base(options) { }
 
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<SeatReservation> SeatReservations => Set<SeatReservation>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,5 +1,7 @@
 using Bookings.Api.Contracts;
 using Bookings.Application.Commands.AddTicket;
+using Bookings.Application.Commands.CancelBooking;
+using Bookings.Application.Commands.ConfirmBooking;
 using Bookings.Application.Commands.CreateBooking;
 using Bookings.Application.Queries.GetBookingById;
 using MediatR;
@@ -51,6 +53,29 @@ public static class BookingsEndpoints
             return result.IsSuccess
                 ? Results.Created($"/bookings/{id}/tickets/{result.Value}",
                     new { ticketId = result.Value })
+                : Results.BadRequest(new { error = result.Error, code = result.ErrorCode });
+        });
+
+        group.MapPost("/{id:guid}/confirm", async (
+            Guid id,
+            IMediator mediator,
+            CancellationToken ct) =>
+        {
+            var result = await mediator.Send(new ConfirmBookingCommand(id), ct);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(new { error = result.Error, code = result.ErrorCode });
+        });
+
+        group.MapPost("/{id:guid}/cancel", async (
+            Guid id,
+            CancelBookingRequest req,
+            IMediator mediator,
+            CancellationToken ct) =>
+        {
+            var result = await mediator.Send(new CancelBookingCommand(id, req.Reason), ct);
+            return result.IsSuccess
+                ? Results.NoContent()
                 : Results.BadRequest(new { error = result.Error, code = result.ErrorCode });
         });
 

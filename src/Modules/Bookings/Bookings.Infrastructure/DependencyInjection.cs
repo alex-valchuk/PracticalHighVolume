@@ -1,7 +1,10 @@
 using Bookings.Application.Abstractions;
 using Bookings.Infrastructure.Integration.FlightCatalog;
+using Bookings.Infrastructure.Integration.Payments;
+using Bookings.Infrastructure.Options;
 using Bookings.Infrastructure.Persistence;
 using Bookings.Infrastructure.Persistence.Repositories;
+using Bookings.Infrastructure.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,8 +31,11 @@ public static class DependencyInjection
         services.AddScoped<IBookingReadRepository, BookingReadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Cross-module adapter (see ADR-005 and SPEC-003.2 AD-3).
         services.AddScoped<IFlightCatalogClient, FlightCatalogClient>();
+
+        services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
+        services.AddScoped<ISeatReservationService, SeatReservationService>();
+        services.AddScoped<IPaymentGateway, FakePaymentGateway>();
 
         return services;
     }

@@ -138,6 +138,25 @@ public sealed class Booking : AggregateRoot<Guid>
         Raise(new BookingExpired(Id, BookRef.Value, reason));
     }
 
+    /// <summary>
+    /// Saga compensation only. Transitions to Expired from any non-terminal
+    /// state (Pending or Confirmed). This is required because the saga may
+    /// call Confirm() in memory and then fail to persist - in that case the
+    /// in-memory Status is already Confirmed but the DB still says Pending.
+    /// Idempotent: does nothing if already Expired or Cancelled.
+    /// </summary>
+    public void ExpireForCompensation(string reason)
+    {
+        if (Status == BookingStatus.Expired || Status == BookingStatus.Cancelled)
+            return;
+
+        if (string.IsNullOrWhiteSpace(reason))
+            reason = "Saga compensation";
+
+        Status = BookingStatus.Expired;
+        Raise(new BookingExpired(Id, BookRef.Value, reason));
+    }
+
     public void Cancel(string reason)
     {
         if (Status == BookingStatus.Cancelled)
