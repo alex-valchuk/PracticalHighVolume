@@ -9,6 +9,7 @@
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FlightsPlatform.Infrastructure.Redis\FlightsPlatform.Infrastructure.Redis.csproj" />
     <ProjectReference Include="..\..\Modules\FlightCatalog\FlightCatalog.Api\FlightCatalog.Api.csproj" />
     <ProjectReference Include="..\..\Modules\FlightCatalog\FlightCatalog.Infrastructure\FlightCatalog.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\FlightCatalog\FlightCatalog.Application\FlightCatalog.Application.csproj" />

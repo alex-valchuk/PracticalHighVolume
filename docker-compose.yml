@@ -6,13 +6,10 @@ services:
       POSTGRES_USER: flights
       POSTGRES_PASSWORD: flights_dev_password
       POSTGRES_DB: flights_demo
-      # Важно: search_path по умолчанию — bookings, public
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     ports:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      #- ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U flights -d flights_demo"]
       interval: 10s
@@ -20,5 +17,16 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: flights-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  redisdata:

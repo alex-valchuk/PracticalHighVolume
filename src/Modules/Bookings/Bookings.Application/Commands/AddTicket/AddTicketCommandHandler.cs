@@ -9,29 +9,46 @@ namespace Bookings.Application.Commands.AddTicket;
 
 public sealed class AddTicketCommandHandler : IRequestHandler<AddTicketCommand, Result<Guid>>
 {
-    // FlightStatus values from FlightCatalog.Domain.
     private const int FlightStatusScheduled = 0;
     private const int FlightStatusDelayed = 1;
+    private static readonly TimeSpan LockTtl = TimeSpan.FromSeconds(10);
 
     private readonly IBookingRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IFlightCatalogClient _flightCatalog;
+    private readonly IDistributedLockService _lockService;
     private readonly ILogger<AddTicketCommandHandler> _logger;
 
     public AddTicketCommandHandler(
         IBookingRepository repository,
         IUnitOfWork unitOfWork,
         IFlightCatalogClient flightCatalog,
+        IDistributedLockService lockService,
         ILogger<AddTicketCommandHandler> logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _flightCatalog = flightCatalog;
+        _lockService = lockService;
         _logger = logger;
     }
 
     public async Task<Result<Guid>> Handle(AddTicketCommand request, CancellationToken ct)
     {
+        // Serialize concurrent mutations of the same booking aggregate.
+        var lockKey = CacheKeys.BookingLock(request.BookingId);
+        await using var lockHandle = await _lockService.TryAcquireAsync(lockKey, LockTtl, ct);
+
+        if (lockHandle is null)
+        {
+            _logger.LogWarning(
+                "Concurrent modification detected for booking {BookingId}",
+                request.BookingId);
+            return Result<Guid>.Failure(
+                "Another operation is in progress on this booking. Retry.",
+                "concurrent_modification");
+        }
+
         var booking = await _repository.GetByIdAsync(request.BookingId, ct);
         if (booking is null)
             return Result<Guid>.Failure("Booking not found.", "not_found");
@@ -57,9 +74,6 @@ public sealed class AddTicketCommandHandler : IRequestHandler<AddTicketCommand, 
                 request.FlightId,
                 request.Amount);
 
-            // NO Update() call: the entity is already tracked by EF Core.
-            // EF Core detects the added Ticket in the owned collection and
-            // issues INSERT automatically.
             await _unitOfWork.SaveChangesAsync(ct);
 
             _logger.LogInformation(
