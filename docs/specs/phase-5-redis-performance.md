@@ -3,7 +3,7 @@
 | Field      | Value                                        |
 | ---------- | -------------------------------------------- |
 | Spec ID    | SPEC-005                                     |
-| Status     | Draft - awaiting approval                    |
+| Status          | Accepted (5.2.2 cancelled)              |
 | Phase      | 5                                            |
 | Created    | 2026-09-16                                   |
 | Depends on | SPEC-004 (Angular SPA)                       |
@@ -336,3 +336,24 @@ Record in `docs/perf/phase-5-baseline.md`.
 - ADR-005 Bookings as a separate bounded context
 - ADR-006 Saga orchestration
 - SPEC-004 Angular SPA
+---
+
+## 13. Cancellation note (5.2.2 вЂ” performance tuning)
+
+Task 5.2.2 (EXPLAIN ANALYZE + index tuning) is **cancelled**.
+
+**Reason:** The operational `flight_catalog.flights` table contains only
+a handful of rows (flights are created by our own commands; we do not
+migrate historical data вЂ” see ADR-012). Running `EXPLAIN ANALYZE` on a
+table of two rows produces a `Seq Scan`, which is the *correct* plan for
+that size. Adding indexes would be premature optimization with no measured
+need.
+
+The decision is captured in **ADR-012**: we do not migrate historical
+data into the operational catalog. When the table grows through real
+usage, we will measure and index based on observed need.
+
+Phase 5 is considered complete with:
+- 5.1 вЂ” Redis cache-aside for airports (done)
+- 5.2.1 вЂ” Distributed lock for AddTicket (done)
+- 5.2.2 вЂ” Cancelled by design

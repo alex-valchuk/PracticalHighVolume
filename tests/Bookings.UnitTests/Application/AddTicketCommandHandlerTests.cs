@@ -3,6 +3,7 @@ using Bookings.Application.Commands.AddTicket;
 using Bookings.Domain;
 using Bookings.Domain.Aggregates;
 using Bookings.Domain.ValueObjects;
+using FlightsPlatform.Application.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -21,11 +22,39 @@ public class AddTicketCommandHandlerTests
             PassengerName.Create("IVANOV IVAN"),
             "RUB");
 
+    private static Mock<IDistributedLockService> LockAcquired()
+    {
+        var mock = new Mock<IDistributedLockService>();
+        var handle = new Mock<IAsyncDisposable>();
+        handle.Setup(h => h.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
+        mock.Setup(s => s.TryAcquireAsync(
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(handle.Object);
+
+        return mock;
+    }
+
+    private static Mock<IDistributedLockService> LockNotAcquired()
+    {
+        var mock = new Mock<IDistributedLockService>();
+        mock.Setup(s => s.TryAcquireAsync(
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IAsyncDisposable?)null);
+        return mock;
+    }
+
     private static AddTicketCommandHandler Build(
         Mock<IBookingRepository> repo,
         Mock<IUnitOfWork> uow,
-        Mock<IFlightCatalogClient> fc)
+        Mock<IFlightCatalogClient> fc,
+        Mock<IDistributedLockService>? locks = null)
         => new(repo.Object, uow.Object, fc.Object,
+               (locks ?? LockAcquired()).Object,
                NullLogger<AddTicketCommandHandler>.Instance);
 
     private static FlightSummary Summary(Guid id, int status = StatusScheduled)
@@ -61,6 +90,31 @@ public class AddTicketCommandHandlerTests
         result.Value.Should().NotBeEmpty();
         booking.TotalAmount.Amount.Should().Be(12000m);
         uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenLockNotAcquired_ReturnsConcurrentModification()
+    {
+        var booking = MakeBooking();
+        var flightId = Guid.NewGuid();
+
+        var repo = new Mock<IBookingRepository>();
+        var uow = new Mock<IUnitOfWork>();
+        var fc = new Mock<IFlightCatalogClient>();
+
+        var handler = Build(repo, uow, fc, LockNotAcquired());
+
+        var result = await handler.Handle(
+            new AddTicketCommand(booking.Id, flightId, "9999999999", "X", 100m),
+            CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be("concurrent_modification");
+
+        // Repository and gateway must not be touched under a failed lock.
+        repo.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        fc.Verify(f => f.GetFlightAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -134,7 +188,6 @@ public class AddTicketCommandHandlerTests
         var booking = MakeBooking();
         var flightId = Guid.NewGuid();
 
-        // First ticket added directly to make duplicate
         booking.AddTicket(
             PassengerId.Create("9999999999"),
             PassengerName.Create("PETROV PETR"),

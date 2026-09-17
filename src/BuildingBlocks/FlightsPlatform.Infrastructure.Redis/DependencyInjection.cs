@@ -24,6 +24,7 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<ICacheService, RedisCacheService>();
+        services.AddSingleton<IDistributedLockService, RedisDistributedLockService>();
 
         return services;
     }
