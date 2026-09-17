@@ -1,7 +1,7 @@
 using FluentValidation;
 using MediatR;
 
-namespace Bookings.Application.Behaviors;
+namespace FlightsPlatform.Application.Abstractions.Behaviors;
 
 public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull

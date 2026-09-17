@@ -1,4 +1,5 @@
 using FlightCatalog.Domain.Aggregates;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlightCatalog.Infrastructure.Persistence;
@@ -17,6 +18,13 @@ public sealed class FlightCatalogDbContext : DbContext
     {
         modelBuilder.HasDefaultSchema(SchemaName);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FlightCatalogDbContext).Assembly);
+
+        // MassTransit transactional Outbox: writes integration events
+        // in the same transaction as the aggregate change.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
         base.OnModelCreating(modelBuilder);
     }
 }

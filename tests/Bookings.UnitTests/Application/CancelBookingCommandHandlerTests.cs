@@ -3,6 +3,7 @@ using Bookings.Application.Commands.CancelBooking;
 using Bookings.Domain;
 using Bookings.Domain.Aggregates;
 using Bookings.Domain.ValueObjects;
+using FlightsPlatform.Application.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -12,6 +13,14 @@ namespace Bookings.UnitTests.Application;
 
 public class CancelBookingCommandHandlerTests
 {
+    private static Mock<IIntegrationEventPublisher> Publisher()
+    {
+        var mock = new Mock<IIntegrationEventPublisher>();
+        mock.Setup(p => p.PublishAsync(It.IsAny<It.IsAnyType>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
     private static Booking MakeBooking()
         => Booking.CreateDraft(
             PassengerId.Create("1234567890"),
@@ -22,7 +31,7 @@ public class CancelBookingCommandHandlerTests
         Mock<IBookingRepository> repo,
         Mock<IUnitOfWork> uow,
         Mock<ISeatReservationService> seats)
-        => new(repo.Object, uow.Object, seats.Object,
+        => new(repo.Object, uow.Object, seats.Object, Publisher().Object,
                NullLogger<CancelBookingCommandHandler>.Instance);
 
     [Fact]

@@ -1,5 +1,6 @@
 using Bookings.Application.Abstractions;
 using Bookings.Application.Commands.CreateBooking;
+using FlightsPlatform.Application.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -9,6 +10,14 @@ namespace Bookings.UnitTests.Application;
 
 public class CreateBookingCommandHandlerTests
 {
+    private static Mock<IIntegrationEventPublisher> Publisher()
+    {
+        var mock = new Mock<IIntegrationEventPublisher>();
+        mock.Setup(p => p.PublishAsync(It.IsAny<It.IsAnyType>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
     [Fact]
     public async Task Handle_WithValidRequest_ReturnsSuccess()
     {
@@ -20,7 +29,8 @@ public class CreateBookingCommandHandlerTests
         uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var handler = new CreateBookingCommandHandler(
-            repo.Object, uow.Object, NullLogger<CreateBookingCommandHandler>.Instance);
+            repo.Object, uow.Object, Publisher().Object,
+            NullLogger<CreateBookingCommandHandler>.Instance);
 
         var result = await handler.Handle(
             new CreateBookingCommand("1234567890", "IVANOV IVAN", "RUB"),
@@ -28,7 +38,9 @@ public class CreateBookingCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeEmpty();
-        repo.Verify(r => r.AddAsync(It.IsAny<Bookings.Domain.Aggregates.Booking>(), It.IsAny<CancellationToken>()), Times.Once);
+        repo.Verify(r => r.AddAsync(
+            It.IsAny<Bookings.Domain.Aggregates.Booking>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -37,7 +49,8 @@ public class CreateBookingCommandHandlerTests
         var repo = new Mock<IBookingRepository>();
         var uow = new Mock<IUnitOfWork>();
         var handler = new CreateBookingCommandHandler(
-            repo.Object, uow.Object, NullLogger<CreateBookingCommandHandler>.Instance);
+            repo.Object, uow.Object, Publisher().Object,
+            NullLogger<CreateBookingCommandHandler>.Instance);
 
         var result = await handler.Handle(
             new CreateBookingCommand("bad", "IVANOV IVAN", "RUB"),

@@ -7,8 +7,11 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.0.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="MassTransit" Version="9.2.0" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="9.2.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\FlightsPlatform.Contracts\FlightsPlatform.Contracts.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\FlightsPlatform.Infrastructure.Redis\FlightsPlatform.Infrastructure.Redis.csproj" />
     <ProjectReference Include="..\..\Modules\FlightCatalog\FlightCatalog.Api\FlightCatalog.Api.csproj" />
     <ProjectReference Include="..\..\Modules\FlightCatalog\FlightCatalog.Infrastructure\FlightCatalog.Infrastructure.csproj" />

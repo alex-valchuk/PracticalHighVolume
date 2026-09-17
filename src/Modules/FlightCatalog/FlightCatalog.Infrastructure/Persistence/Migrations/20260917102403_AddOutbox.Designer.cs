@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using FlightCatalog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,14 +13,16 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FlightCatalog.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FlightCatalogDbContext))]
-    partial class FlightCatalogDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917102403_AddOutbox")]
+    partial class AddOutbox
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("flight_catalog")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -55,7 +58,7 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("timezone");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Coordinates", "FlightCatalog.Domain.Aggregates.Airport.Coordinates#Coordinates", b1 =>
+                    b.ComplexProperty<Dictionary<string, object>>("Coordinates", "FlightCatalog.Domain.Aggregates.Airport.Coordinates#Coordinates", b1 =>
                         {
                             b1.IsRequired();
 
@@ -93,7 +96,7 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "FlightNumber", "FlightCatalog.Domain.Aggregates.Flight.FlightNumber#FlightNumber", b1 =>
+                    b.ComplexProperty<Dictionary<string, object>>("FlightNumber", "FlightCatalog.Domain.Aggregates.Flight.FlightNumber#FlightNumber", b1 =>
                         {
                             b1.IsRequired();
 
@@ -104,11 +107,11 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
                                 .HasColumnName("flight_no");
                         });
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Route", "FlightCatalog.Domain.Aggregates.Flight.Route#Route", b1 =>
+                    b.ComplexProperty<Dictionary<string, object>>("Route", "FlightCatalog.Domain.Aggregates.Flight.Route#Route", b1 =>
                         {
                             b1.IsRequired();
 
-                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Arrival", "FlightCatalog.Domain.Aggregates.Flight.Route#Route.Arrival#AirportCode", b2 =>
+                            b1.ComplexProperty<Dictionary<string, object>>("Arrival", "FlightCatalog.Domain.Aggregates.Flight.Route#Route.Arrival#AirportCode", b2 =>
                                 {
                                     b2.IsRequired();
 
@@ -119,7 +122,7 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
                                         .HasColumnName("arrival_airport");
                                 });
 
-                            b1.ComplexProperty(typeof(Dictionary<string, object>), "Departure", "FlightCatalog.Domain.Aggregates.Flight.Route#Route.Departure#AirportCode", b2 =>
+                            b1.ComplexProperty<Dictionary<string, object>>("Departure", "FlightCatalog.Domain.Aggregates.Flight.Route#Route.Departure#AirportCode", b2 =>
                                 {
                                     b2.IsRequired();
 
@@ -131,7 +134,7 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
                                 });
                         });
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Schedule", "FlightCatalog.Domain.Aggregates.Flight.Schedule#Schedule", b1 =>
+                    b.ComplexProperty<Dictionary<string, object>>("Schedule", "FlightCatalog.Domain.Aggregates.Flight.Schedule#Schedule", b1 =>
                         {
                             b1.IsRequired();
 
@@ -276,6 +279,10 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
 
                     b.HasKey("SequenceNumber");
 
+                    b.HasIndex("EnqueueTime");
+
+                    b.HasIndex("ExpirationTime");
+
                     b.HasIndex("OutboxId", "SequenceNumber")
                         .IsUnique();
 
@@ -290,10 +297,6 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OutboxId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("BusName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
@@ -314,7 +317,7 @@ namespace FlightCatalog.Infrastructure.Persistence.Migrations
 
                     b.HasKey("OutboxId");
 
-                    b.HasIndex("BusName", "Created");
+                    b.HasIndex("Created");
 
                     b.ToTable("OutboxState", "flight_catalog");
                 });

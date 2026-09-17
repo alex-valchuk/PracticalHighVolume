@@ -1,6 +1,7 @@
 using FlightCatalog.Application.Abstractions;
 using FlightCatalog.Application.Commands.ScheduleFlight;
 using FlightCatalog.Domain.Aggregates;
+using FlightsPlatform.Application.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -10,10 +11,19 @@ namespace FlightCatalog.UnitTests.Application;
 
 public class ScheduleFlightCommandHandlerTests
 {
-    private static ScheduleFlightCommandHandler BuildHandler(
+    private static ScheduleFlightCommandHandler Build(
         Mock<IFlightRepository> repo,
-        Mock<IUnitOfWork> uow)
-        => new(repo.Object, uow.Object, NullLogger<ScheduleFlightCommandHandler>.Instance);
+        Mock<IUnitOfWork> uow,
+        Mock<IIntegrationEventPublisher>? publisher = null)
+    {
+        var pub = publisher ?? new Mock<IIntegrationEventPublisher>();
+        pub.Setup(p => p.PublishAsync(It.IsAny<It.IsAnyType>(), It.IsAny<CancellationToken>()))
+           .Returns(Task.CompletedTask);
+
+        return new ScheduleFlightCommandHandler(
+            repo.Object, uow.Object, pub.Object,
+            NullLogger<ScheduleFlightCommandHandler>.Instance);
+    }
 
     [Fact]
     public async Task Handle_WithValidRequest_ReturnsSuccess()
@@ -26,7 +36,7 @@ public class ScheduleFlightCommandHandlerTests
         uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var handler = BuildHandler(repo, uow);
+        var handler = Build(repo, uow);
 
         var cmd = new ScheduleFlightCommand(
             "PG-0421", "SVO", "OVB",
@@ -47,7 +57,7 @@ public class ScheduleFlightCommandHandlerTests
     {
         var repo = new Mock<IFlightRepository>();
         var uow = new Mock<IUnitOfWork>();
-        var handler = BuildHandler(repo, uow);
+        var handler = Build(repo, uow);
 
         var cmd = new ScheduleFlightCommand(
             "PG-0421", "SVO", "SVO",

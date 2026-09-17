@@ -2,29 +2,13 @@ using Bookings.Application.Abstractions;
 using Bookings.Domain;
 using Bookings.Domain.Aggregates;
 using FlightsPlatform.Application.Abstractions;
+using FlightsPlatform.Contracts.Bookings;
 using FlightsPlatform.SharedKernel;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace Bookings.Application.Commands.ConfirmBooking;
 
-/// <summary>
-/// Orchestration saga for confirming a booking.
-///
-/// Steps:
-///   1. Verify each flight is available.
-///   2. Reserve a seat for each ticket.
-///   3. Charge payment.
-///   4. Mark booking Confirmed.
-///
-/// Compensations (in reverse order) on any failure after step 2 begins:
-///   - Refund payment if charged.
-///   - Release all seat reservations.
-///   - Mark booking Expired.
-///
-/// Compensations are idempotent and individually fault-tolerant: a failing
-/// compensation is logged and does not abort the rest.
-/// </summary>
 public sealed class ConfirmBookingCommandHandler
     : IRequestHandler<ConfirmBookingCommand, Result<ConfirmBookingResult>>
 {
@@ -36,6 +20,7 @@ public sealed class ConfirmBookingCommandHandler
     private readonly IFlightCatalogClient _flightCatalog;
     private readonly ISeatReservationService _seatReservations;
     private readonly IPaymentGateway _paymentGateway;
+    private readonly IIntegrationEventPublisher _publisher;
     private readonly ILogger<ConfirmBookingCommandHandler> _logger;
 
     public ConfirmBookingCommandHandler(
@@ -44,6 +29,7 @@ public sealed class ConfirmBookingCommandHandler
         IFlightCatalogClient flightCatalog,
         ISeatReservationService seatReservations,
         IPaymentGateway paymentGateway,
+        IIntegrationEventPublisher publisher,
         ILogger<ConfirmBookingCommandHandler> logger)
     {
         _repository = repository;
@@ -51,6 +37,7 @@ public sealed class ConfirmBookingCommandHandler
         _flightCatalog = flightCatalog;
         _seatReservations = seatReservations;
         _paymentGateway = paymentGateway;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -79,7 +66,6 @@ public sealed class ConfirmBookingCommandHandler
 
         try
         {
-            // Step 1+2: verify flights + reserve seats
             foreach (var ticket in booking.Tickets)
             {
                 var flight = await _flightCatalog.GetFlightAsync(ticket.FlightId, ct);
@@ -92,13 +78,8 @@ public sealed class ConfirmBookingCommandHandler
                 var reservationId = await _seatReservations.ReserveAsync(
                     booking.Id, ticket.Id, ticket.FlightId, ct);
                 reservedIds.Add(reservationId);
-
-                _logger.LogInformation(
-                    "Saga step: reserved seat {ReservationId} for ticket {TicketId} on flight {FlightId}",
-                    reservationId, ticket.Id, ticket.FlightId);
             }
 
-            // Step 3: charge payment
             var paymentResult = await _paymentGateway.ChargeAsync(
                 booking.Id, booking.TotalAmount.Amount, booking.TotalAmount.Currency, ct);
 
@@ -106,18 +87,23 @@ public sealed class ConfirmBookingCommandHandler
                 throw new SagaFailureException(paymentResult.FailureReason ?? "Payment failed.");
 
             paymentId = paymentResult.PaymentId;
-            _logger.LogInformation(
-                "Saga step: charged payment {PaymentId} for booking {BookingId} amount {Amount} {Currency}",
-                paymentId, booking.Id, booking.TotalAmount.Amount, booking.TotalAmount.Currency);
 
-            // Demo/testing hook: simulate a failure AFTER the charge succeeded,
-            // so that compensation (refund + release + expire) is exercised.
-            // Always false in production (PaymentOptions.SimulateFailureAfterCharge = false).
             if (paymentResult.SimulateFailureAfterCharge)
                 throw new SagaFailureException("Simulated failure after charge (demo).");
 
-            // Step 4: confirm
             booking.Confirm();
+
+            await _publisher.PublishAsync(new BookingConfirmedIntegrationEvent
+            {
+                BookingId = booking.Id,
+                BookingReference = booking.BookRef.Value,
+                PassengerId = booking.PassengerId.Value,
+                PassengerName = booking.PassengerName.Value,
+                TotalAmount = booking.TotalAmount.Amount,
+                Currency = booking.TotalAmount.Currency,
+                TicketCount = booking.Tickets.Count
+            }, ct);
+
             await _unitOfWork.SaveChangesAsync(ct);
 
             _logger.LogInformation("Saga completed: booking {BookingId} confirmed", booking.Id);
@@ -139,13 +125,10 @@ public sealed class ConfirmBookingCommandHandler
         }
         catch (OperationCanceledException)
         {
-            // Do not compensate on cancellation - the caller is going away.
             throw;
         }
         catch (Exception ex)
         {
-            // Catch-all: any unexpected error after the saga started must still
-            // trigger compensation, otherwise money is charged with no booking.
             _logger.LogError(ex,
                 "Unexpected error during saga for booking {BookingId} - running compensation",
                 booking.Id);
@@ -166,14 +149,11 @@ public sealed class ConfirmBookingCommandHandler
             "Saga compensation started for booking {BookingId}: reservations={Count}, payment={PaymentId}",
             booking.Id, reservedIds.Count, paymentId?.ToString() ?? "none");
 
-        // Compensation step 1: refund payment (if charged)
         if (paymentId.HasValue)
         {
             try
             {
                 await _paymentGateway.RefundAsync(paymentId.Value, ct);
-                _logger.LogInformation(
-                    "Saga compensation: refunded payment {PaymentId}", paymentId.Value);
             }
             catch (Exception ex)
             {
@@ -181,13 +161,11 @@ public sealed class ConfirmBookingCommandHandler
             }
         }
 
-        // Compensation step 2: release all seat reservations
         foreach (var id in reservedIds)
         {
             try
             {
                 await _seatReservations.ReleaseAsync(id, ct);
-                _logger.LogInformation("Saga compensation: released reservation {ReservationId}", id);
             }
             catch (Exception ex)
             {
@@ -195,14 +173,18 @@ public sealed class ConfirmBookingCommandHandler
             }
         }
 
-        // Compensation step 3: mark booking Expired.
-        // Use ExpireForCompensation (not MarkExpired) because the in-memory
-        // status may already be Confirmed if the final SaveChanges failed.
         try
         {
             booking.ExpireForCompensation(reason);
+
+            await _publisher.PublishAsync(new BookingExpiredIntegrationEvent
+            {
+                BookingId = booking.Id,
+                BookingReference = booking.BookRef.Value,
+                Reason = reason
+            }, ct);
+
             await _unitOfWork.SaveChangesAsync(ct);
-            _logger.LogInformation("Saga compensation: booking {BookingId} marked Expired", booking.Id);
         }
         catch (Exception ex)
         {

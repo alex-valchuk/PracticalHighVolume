@@ -3,7 +3,9 @@ using FlightCatalog.Application.Commands.CancelFlight;
 using FlightCatalog.Domain;
 using FlightCatalog.Domain.Aggregates;
 using FlightCatalog.Domain.ValueObjects;
+using FlightsPlatform.Application.Abstractions;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -11,6 +13,14 @@ namespace FlightCatalog.UnitTests.Application;
 
 public class CancelFlightCommandHandlerTests
 {
+    private static Mock<IIntegrationEventPublisher> Publisher()
+    {
+        var mock = new Mock<IIntegrationEventPublisher>();
+        mock.Setup(p => p.PublishAsync(It.IsAny<It.IsAnyType>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
     [Fact]
     public async Task Handle_WhenFlightNotFound_ReturnsFailure()
     {
@@ -19,9 +29,12 @@ public class CancelFlightCommandHandlerTests
             .ReturnsAsync((Flight?)null);
 
         var uow = new Mock<IUnitOfWork>();
-        var handler = new CancelFlightCommandHandler(repo.Object, uow.Object);
+        var handler = new CancelFlightCommandHandler(
+            repo.Object, uow.Object, Publisher().Object,
+            NullLogger<CancelFlightCommandHandler>.Instance);
 
-        var result = await handler.Handle(new CancelFlightCommand(Guid.NewGuid(), "test"),
+        var result = await handler.Handle(
+            new CancelFlightCommand(Guid.NewGuid(), "test"),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -45,8 +58,12 @@ public class CancelFlightCommandHandlerTests
         var uow = new Mock<IUnitOfWork>();
         uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        var handler = new CancelFlightCommandHandler(repo.Object, uow.Object);
-        var result = await handler.Handle(new CancelFlightCommand(flight.Id, "weather"),
+        var handler = new CancelFlightCommandHandler(
+            repo.Object, uow.Object, Publisher().Object,
+            NullLogger<CancelFlightCommandHandler>.Instance);
+
+        var result = await handler.Handle(
+            new CancelFlightCommand(flight.Id, "weather"),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
