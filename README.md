@@ -531,7 +531,7 @@ removes one more coupling from the current single-process deployment.
 - [x] **Phase 3** — Bookings module + saga with compensations
 - [x] **Phase 4** — Angular SPA
 - [x] **Phase 5** — Redis: distributed cache and locks, so modules can scale apart
-- [ ] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox,
+- [x] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox,
       so modules stop calling each other synchronously
 - [ ] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
       see each future service's traces, metrics, and logs

@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.vs/
+**/.vscode/
+**/.git/
+**/.gitignore
+**/logs/
+**/TestResults/
+**/*.user
+**/*.log
+frontend/dist/
+docs/screenshots/
+*.md
+!README.md

@@ -23,6 +23,10 @@
     <Project Path="src/Modules/FlightCatalog/FlightCatalog.Domain/FlightCatalog.Domain.csproj" />
     <Project Path="src/Modules/FlightCatalog/FlightCatalog.Infrastructure/FlightCatalog.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Workers/">
+    <Project Path="src/Workers/FlightsPlatform.AnalyticsWorker/FlightsPlatform.AnalyticsWorker.csproj" />
+    <Project Path="src/Workers/FlightsPlatform.NotificationWorker/FlightsPlatform.NotificationWorker.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Bookings.UnitTests/Bookings.UnitTests.csproj" />
     <Project Path="tests/FlightCatalog.UnitTests/FlightCatalog.UnitTests.csproj" />

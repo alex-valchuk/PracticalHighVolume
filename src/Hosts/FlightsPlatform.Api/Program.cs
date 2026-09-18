@@ -72,34 +72,22 @@ try
     {
         x.SetKebabCaseEndpointNameFormatter();
 
-        // Register outbox for each DbContext.
-        // Disable lock-statement schema caching (second arg = false) because
-        // MassTransit 9.2 caches the lock SQL by entity type; with two contexts
-        // that can reuse the wrong schema. See MassTransit docs on multi-DbContext outbox.
-        x.AddEntityFrameworkOutbox<FlightCatalogDbContext>(o =>
-        {
-            o.UsePostgres(false);
-            o.UseBusOutbox();
-        });
-
+        // MassTransit 8.x supports transactional outbox for a single DbContext only.
+        // Bookings is chosen because it carries the saga and critical events
+        // (BookingConfirmed, BookingExpired). FlightCatalog events are published
+        // directly without the outbox guarantee.
         x.AddEntityFrameworkOutbox<BookingDbContext>(o =>
         {
-            o.UsePostgres(false);
+            o.UsePostgres();
             o.UseBusOutbox();
         });
-
-        // Choose the default bus outbox for non-typed IPublishEndpoint usage.
-        // Must be called on the registration configurator (x), NOT inside AddEntityFrameworkOutbox.
-        // For Phase 6.1 we route all Publish() calls through flight_catalog.outbox.
-        // Phase 6.2 will move to per-module typed publishers.
-        x.UseDefaultEntityFrameworkBusOutbox<FlightCatalogDbContext>();
 
         x.UsingRabbitMq((context, cfg) =>
         {
             var host = builder.Configuration["RabbitMq:Host"] ?? "localhost";
             var vhost = builder.Configuration["RabbitMq:VirtualHost"] ?? "/";
-            var user = builder.Configuration["RabbitMq:Username"] ?? "flights";
-            var pass = builder.Configuration["RabbitMq:Password"] ?? "flights_dev_password";
+            var user = builder.Configuration["RabbitMq:Username"] ?? "guest";
+            var pass = builder.Configuration["RabbitMq:Password"] ?? "guest";
 
             cfg.Host(host, vhost, h =>
             {

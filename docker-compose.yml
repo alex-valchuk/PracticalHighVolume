@@ -33,17 +33,59 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: flights
-      RABBITMQ_DEFAULT_PASS: flights_dev_password
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+
+  notification-worker:
+    build:
+      context: .
+      dockerfile: src/Workers/FlightsPlatform.NotificationWorker/Dockerfile
+    image: flights-notification-worker:latest
+    container_name: flights-notification-worker
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__Notification: "Host=flights-postgres;Port=5432;Database=flights_demo;Username=flights;Password=flights_dev_password"
+      RabbitMq__Host: "flights-rabbitmq"
+      RabbitMq__VirtualHost: "/"
+      RabbitMq__Username: "guest"
+      RabbitMq__Password: "guest"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+
+  analytics-worker:
+    build:
+      context: .
+      dockerfile: src/Workers/FlightsPlatform.AnalyticsWorker/Dockerfile
+    image: flights-analytics-worker:latest
+    container_name: flights-analytics-worker
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__Analytics: "Host=flights-postgres;Port=5432;Database=flights_demo;Username=flights;Password=flights_dev_password"
+      RabbitMq__Host: "flights-rabbitmq"
+      RabbitMq__VirtualHost: "/"
+      RabbitMq__Username: "guest"
+      RabbitMq__Password: "guest"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
 
 volumes:
   pgdata:
