@@ -7,11 +7,12 @@
     <PackageReference Include="FluentValidation" Version="11.10.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
     <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FlightCatalog.Domain\FlightCatalog.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\FlightsPlatform.Application.Abstractions\FlightsPlatform.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\FlightsPlatform.Contracts\FlightsPlatform.Contracts.csproj" />
   </ItemGroup>
 </Project>

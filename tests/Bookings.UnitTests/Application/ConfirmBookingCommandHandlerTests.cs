@@ -3,6 +3,7 @@ using Bookings.Application.Commands.ConfirmBooking;
 using Bookings.Domain;
 using Bookings.Domain.Aggregates;
 using Bookings.Domain.ValueObjects;
+using FlightsPlatform.Application.Abstractions;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -38,6 +39,14 @@ public class ConfirmBookingCommandHandlerTests
                DateTimeOffset.UtcNow.AddDays(1).AddHours(4),
                status);
 
+    private static Mock<IIntegrationEventPublisher> Publisher()
+    {
+        var mock = new Mock<IIntegrationEventPublisher>();
+        mock.Setup(p => p.PublishAsync(It.IsAny<It.IsAnyType>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
     private static ConfirmBookingCommandHandler Build(
         Mock<IBookingRepository> repo,
         Mock<IUnitOfWork> uow,
@@ -45,6 +54,7 @@ public class ConfirmBookingCommandHandlerTests
         Mock<ISeatReservationService> seats,
         Mock<IPaymentGateway> pay)
         => new(repo.Object, uow.Object, fc.Object, seats.Object, pay.Object,
+               Publisher().Object,
                NullLogger<ConfirmBookingCommandHandler>.Instance);
 
     private static void SetupBooking(Mock<IBookingRepository> repo, Booking b)
@@ -220,13 +230,6 @@ public class ConfirmBookingCommandHandlerTests
         result.ErrorCode.Should().Be("not_found");
     }
 
-    // ---------------------------------------------------------------------
-    // NEW: refund path - charge succeeded, then something after it failed.
-    // Two scenarios covered:
-    //   1. Explicit demo hook (SimulateFailureAfterCharge = true)
-    //   2. Unexpected exception (e.g. DbUpdateException from SaveChanges)
-    // ---------------------------------------------------------------------
-
     [Fact]
     public async Task Handle_SimulateFailureAfterCharge_RefundsAndReleases()
     {
@@ -276,7 +279,6 @@ public class ConfirmBookingCommandHandlerTests
         var repo = new Mock<IBookingRepository>();
         SetupBooking(repo, booking);
 
-        // First SaveChanges (post-Confirm) throws; second (during compensation) succeeds.
         var uow = new Mock<IUnitOfWork>();
         uow.SetupSequence(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Simulated DB failure"))

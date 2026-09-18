@@ -2,6 +2,7 @@ using Bookings.Application.Abstractions;
 using Bookings.Domain.Aggregates;
 using Bookings.Domain.ValueObjects;
 using FlightsPlatform.Application.Abstractions;
+using FlightsPlatform.Contracts.Bookings;
 using FlightsPlatform.SharedKernel;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -12,15 +13,18 @@ public sealed class CreateBookingCommandHandler : IRequestHandler<CreateBookingC
 {
     private readonly IBookingRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IIntegrationEventPublisher _publisher;
     private readonly ILogger<CreateBookingCommandHandler> _logger;
 
     public CreateBookingCommandHandler(
         IBookingRepository repository,
         IUnitOfWork unitOfWork,
+        IIntegrationEventPublisher publisher,
         ILogger<CreateBookingCommandHandler> logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _publisher = publisher;
         _logger = logger;
     }
 
@@ -34,6 +38,15 @@ public sealed class CreateBookingCommandHandler : IRequestHandler<CreateBookingC
                 request.Currency);
 
             await _repository.AddAsync(booking, ct);
+
+            await _publisher.PublishAsync(new BookingCreatedIntegrationEvent
+            {
+                BookingId = booking.Id,
+                BookingReference = booking.BookRef.Value,
+                PassengerId = booking.PassengerId.Value,
+                Currency = booking.TotalAmount.Currency
+            }, ct);
+
             await _unitOfWork.SaveChangesAsync(ct);
 
             _logger.LogInformation("Created booking {BookingId} ({BookRef})",

@@ -36,8 +36,7 @@
 
 ## About
 
-Flights Platform is a personal deep-dive into the patterns that separate
-a senior engineer from an architect. It shows, in runnable code, how a
+Flights Platform is a showcase of microservices patterns. It shows, in runnable code, how a
 system **evolves from a modular monolith into microservices** without
 rewriting the domain.
 
@@ -531,8 +530,8 @@ removes one more coupling from the current single-process deployment.
 - [x] **Phase 2** — Integration with external source (`bookings` schema) via ACL
 - [x] **Phase 3** — Bookings module + saga with compensations
 - [x] **Phase 4** — Angular SPA
-- [ ] **Phase 5** — Redis: distributed cache and locks, so modules can scale apart
-- [ ] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox,
+- [x] **Phase 5** — Redis: distributed cache and locks, so modules can scale apart
+- [x] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox,
       so modules stop calling each other synchronously
 - [ ] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
       see each future service's traces, metrics, and logs

@@ -17,6 +17,7 @@ public sealed class FlightCatalogDbContext : DbContext
     {
         modelBuilder.HasDefaultSchema(SchemaName);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FlightCatalogDbContext).Assembly);
+
         base.OnModelCreating(modelBuilder);
     }
 }

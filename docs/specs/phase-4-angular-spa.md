@@ -45,8 +45,6 @@ Build an Angular Single Page Application that:
 4. Becomes a portfolio piece showing frontend + backend integration.
 
 ### 1.3 Why this matters
-- Interviewers expect a senior .NET developer to be able to work alongside
-  frontend teams. A working SPA proves this.
 - A live demo of the compensation flow (payment declined -> booking Expired)
   in a UI is far more compelling than raw curl commands.
 - Angular specifically is the most common enterprise SPA framework in .NET
