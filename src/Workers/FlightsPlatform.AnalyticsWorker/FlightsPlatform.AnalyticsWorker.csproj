@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\FlightsPlatform.Contracts\FlightsPlatform.Contracts.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\FlightsPlatform.Observability\FlightsPlatform.Observability.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">

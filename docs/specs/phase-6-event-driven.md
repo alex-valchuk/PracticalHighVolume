@@ -3,7 +3,7 @@
 | Field      | Value                                        |
 | ---------- | -------------------------------------------- |
 | Spec ID    | SPEC-006                                     |
-| Status     | Draft - awaiting approval                    |
+| Status     | Accepted                 s                    |
 | Phase      | 6                                            |
 | Created    | 2026-09-17                                   |
 | Depends on | SPEC-005 (Redis + distributed lock)          |

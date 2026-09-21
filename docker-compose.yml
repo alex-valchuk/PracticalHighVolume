@@ -43,6 +43,46 @@ services:
       retries: 5
     restart: unless-stopped
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    container_name: flights-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: flights-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheusdata:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: flights-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - jaeger
+    restart: unless-stopped
+
   notification-worker:
     build:
       context: .
@@ -56,14 +96,20 @@ services:
       RabbitMq__VirtualHost: "/"
       RabbitMq__Username: "guest"
       RabbitMq__Password: "guest"
+      Observability__ServiceName: "FlightsPlatform.NotificationWorker"
+      Observability__OtlpEndpoint: "http://flights-jaeger:4317"
+      Observability__TraceSamplingRatio: "1.0"
+      Observability__MetricsPort: "9101"
+    ports:
+      - "9101:9101"
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     restart: unless-stopped
-    networks:
-      - default
 
   analytics-worker:
     build:
@@ -78,16 +124,24 @@ services:
       RabbitMq__VirtualHost: "/"
       RabbitMq__Username: "guest"
       RabbitMq__Password: "guest"
+      Observability__ServiceName: "FlightsPlatform.AnalyticsWorker"
+      Observability__OtlpEndpoint: "http://flights-jaeger:4317"
+      Observability__TraceSamplingRatio: "1.0"
+      Observability__MetricsPort: "9102"
+    ports:
+      - "9102:9102"
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     restart: unless-stopped
-    networks:
-      - default
 
 volumes:
   pgdata:
   redisdata:
   rabbitmqdata:
+  prometheusdata:
+  grafanadata:
