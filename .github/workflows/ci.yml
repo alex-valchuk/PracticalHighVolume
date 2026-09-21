@@ -15,8 +15,8 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
 
 jobs:
-  backend:
-    name: Backend (build & test)
+  backend-unit:
+    name: Backend (build + unit tests)
     runs-on: ubuntu-latest
 
     steps:
@@ -42,14 +42,71 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+      - name: Unit tests
+        run: >
+          dotnet test
+          --no-build
+          --configuration Release
+          --filter "FullyQualifiedName!~FlightsPlatform.IntegrationTests"
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory ./TestResults
 
-      - name: Upload test results
+      - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-test-results
+          name: backend-unit-results
+          path: ./TestResults
+          retention-days: 7
+
+  backend-integration:
+    name: Backend (integration tests with Testcontainers)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', '**/Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Verify Docker is available
+        run: |
+          docker version
+          docker info
+
+      - name: Pre-pull Postgres image (speeds up tests)
+        run: docker pull postgres:16-alpine
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Integration tests
+        run: >
+          dotnet test tests/FlightsPlatform.IntegrationTests
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory ./TestResults
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-integration-results
           path: ./TestResults
           retention-days: 7
 
