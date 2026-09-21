@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FlightsPlatform.AnalyticsWorker.Persistence;
+using FlightsPlatform.Contracts.Common;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace FlightsPlatform.AnalyticsWorker.Consumers;
 
 public abstract class AuditConsumerBase<TEvent> : IConsumer<TEvent>
-    where TEvent : class
+    where TEvent : IntegrationEventBase
 {
     protected abstract string EventType { get; }
 
@@ -22,25 +23,26 @@ public abstract class AuditConsumerBase<TEvent> : IConsumer<TEvent>
 
     public async Task Consume(ConsumeContext<TEvent> context)
     {
-        var msgId = context.MessageId ?? Guid.NewGuid();
+        var msg = context.Message;
+        var messageId = msg.EventId;
 
         var alreadyProcessed = await _db.ConsumedMessages
-            .AnyAsync(m => m.MessageId == msgId, context.CancellationToken);
+            .AnyAsync(m => m.MessageId == messageId, context.CancellationToken);
 
         if (alreadyProcessed)
         {
             _logger.LogWarning(
                 "[AnalyticsWorker] Duplicate message {MessageId} ({EventType}) - skipped",
-                msgId, EventType);
+                messageId, EventType);
             return;
         }
 
-        var payload = JsonSerializer.Serialize(context.Message, context.Message.GetType());
+        var payload = JsonSerializer.Serialize(msg, msg.GetType());
 
         _db.AuditEntries.Add(new AuditEntry
         {
             Id = Guid.NewGuid(),
-            MessageId = msgId,
+            MessageId = messageId,
             EventType = EventType,
             Payload = payload,
             RecordedAt = DateTimeOffset.UtcNow
@@ -48,7 +50,7 @@ public abstract class AuditConsumerBase<TEvent> : IConsumer<TEvent>
 
         _db.ConsumedMessages.Add(new ConsumedMessage
         {
-            MessageId = msgId,
+            MessageId = messageId,
             ConsumedAt = DateTimeOffset.UtcNow
         });
 
@@ -56,6 +58,6 @@ public abstract class AuditConsumerBase<TEvent> : IConsumer<TEvent>
 
         _logger.LogInformation(
             "[AnalyticsWorker] Audited {EventType} (message {MessageId})",
-            EventType, msgId);
+            EventType, messageId);
     }
 }

@@ -20,27 +20,26 @@ public sealed class BookingConfirmedConsumer : IConsumer<BookingConfirmedIntegra
     public async Task Consume(ConsumeContext<BookingConfirmedIntegrationEvent> context)
     {
         var msg = context.Message;
+        var messageId = msg.EventId;
 
-        // Idempotency: skip if this message was already processed.
         var alreadyProcessed = await _db.ConsumedMessages
-            .AnyAsync(m => m.MessageId == msg.EventId, context.CancellationToken);
+            .AnyAsync(m => m.MessageId == messageId, context.CancellationToken);
 
         if (alreadyProcessed)
         {
             _logger.LogWarning(
                 "[NotificationWorker] Duplicate message {MessageId} ({EventType}) - skipped",
-                msg.EventId, nameof(BookingConfirmedIntegrationEvent));
+                messageId, nameof(BookingConfirmedIntegrationEvent));
             return;
         }
 
-        // Simulated email send.
         _logger.LogInformation(
             "[EMAIL] To: passenger {PassengerId} ({PassengerName}) | Subject: Booking {Ref} confirmed | Amount: {Amount} {Currency} | Tickets: {Count}",
             msg.PassengerId, msg.PassengerName, msg.BookingReference, msg.TotalAmount, msg.Currency, msg.TicketCount);
 
         _db.ConsumedMessages.Add(new ConsumedMessage
         {
-            MessageId = msg.EventId,
+            MessageId = messageId,
             ConsumedAt = DateTimeOffset.UtcNow
         });
         await _db.SaveChangesAsync(context.CancellationToken);

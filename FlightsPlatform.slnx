@@ -30,5 +30,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Bookings.UnitTests/Bookings.UnitTests.csproj" />
     <Project Path="tests/FlightCatalog.UnitTests/FlightCatalog.UnitTests.csproj" />
+    <Project Path="tests/FlightsPlatform.IntegrationTests/FlightsPlatform.IntegrationTests.csproj" />
   </Folder>
 </Solution>
