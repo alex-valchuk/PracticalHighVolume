@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Prometheus;
 
 const string DefaultNotificationConnection =
     "Host=127.0.0.1;Port=5433;Database=flights_demo;Username=flights;Password=flights_dev_password";
@@ -20,7 +19,8 @@ builder.Configuration
 
 builder.Services.AddFlightsPlatformObservability(
     builder.Configuration,
-    o => o.ServiceName = "FlightsPlatform.NotificationWorker");
+    o => o.ServiceName = "FlightsPlatform.NotificationWorker",
+    PrometheusExporterMode.HttpListener);
 
 builder.Services.AddDbContext<NotificationDbContext>(opts =>
 {
@@ -58,10 +58,6 @@ builder.Services.AddMassTransit(x =>
 });
 
 var host = builder.Build();
-
-var metricsPort = builder.Configuration.GetValue<int?>("Observability:MetricsPort") ?? 9101;
-var metricServer = new KestrelMetricServer(port: metricsPort);
-metricServer.Start();
 
 using (var scope = host.Services.CreateScope())
 {

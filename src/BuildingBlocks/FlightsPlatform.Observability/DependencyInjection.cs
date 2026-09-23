@@ -7,12 +7,20 @@ using OpenTelemetry.Trace;
 
 namespace FlightsPlatform.Observability;
 
+public enum PrometheusExporterMode
+{
+    None,
+    AspNetCore,
+    HttpListener
+}
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddFlightsPlatformObservability(
         this IServiceCollection services,
         IConfiguration configuration,
-        Action<ObservabilityOptions>? configure = null)
+        Action<ObservabilityOptions>? configure = null,
+        PrometheusExporterMode prometheusMode = PrometheusExporterMode.None)
     {
         var options = new ObservabilityOptions();
         configuration.GetSection(ObservabilityOptions.SectionName).Bind(options);
@@ -65,6 +73,18 @@ public static class DependencyInjection
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddOtlpExporter(o => o.Endpoint = new Uri(options.OtlpEndpoint));
+
+                if (prometheusMode == PrometheusExporterMode.AspNetCore)
+                {
+                    metrics.AddPrometheusExporter();
+                }
+                else if (prometheusMode == PrometheusExporterMode.HttpListener)
+                {
+                    metrics.AddPrometheusHttpListener(o =>
+                    {
+                        o.UriPrefixes = new[] { "http://*:" + options.MetricsPort + "/" };
+                    });
+                }
             });
 
         return services;

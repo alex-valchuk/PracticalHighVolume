@@ -14,5 +14,6 @@
     <ProjectReference Include="..\Bookings.Domain\Bookings.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\FlightsPlatform.Application.Abstractions\FlightsPlatform.Application.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\FlightsPlatform.Contracts\FlightsPlatform.Contracts.csproj" />
+      <ProjectReference Include="..\..\..\BuildingBlocks\FlightsPlatform.Observability\FlightsPlatform.Observability.csproj" />
   </ItemGroup>
 </Project>

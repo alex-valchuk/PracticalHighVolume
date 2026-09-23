@@ -12,5 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FlightsPlatform.Application.Abstractions\FlightsPlatform.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\FlightsPlatform.Observability\FlightsPlatform.Observability.csproj" />
   </ItemGroup>
 </Project>

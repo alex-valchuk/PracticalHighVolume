@@ -18,7 +18,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
-using Prometheus;
+using OpenTelemetry.Metrics;
 using Scalar.AspNetCore;
 using Serilog;
 using FlightsPlatform.SharedKernel;
@@ -57,7 +57,8 @@ try
 
     builder.Services.AddFlightsPlatformObservability(
         builder.Configuration,
-        o => o.ServiceName = "FlightsPlatform.Api");
+        o => o.ServiceName = "FlightsPlatform.Api",
+        PrometheusExporterMode.AspNetCore);
 
     builder.Services.AddHealthChecks()
         .AddNpgSql(
@@ -77,6 +78,7 @@ try
 
         cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
         cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+        cfg.AddOpenBehavior(typeof(TracingBehavior<,>));
     });
 
     builder.Services.AddRedisInfrastructure(builder.Configuration);
@@ -147,7 +149,6 @@ try
     }));
 
     app.UseSerilogRequestLogging();
-    app.UseHttpMetrics();
 
     app.UseHttpsRedirection();
     app.MapControllers();
@@ -179,7 +180,8 @@ try
         Predicate = check => check.Tags.Contains("ready")
     });
 
-    app.MapMetrics();
+    // OTel Prometheus scraping endpoint (exposes all meters: HTTP, runtime, business).
+    app.MapPrometheusScrapingEndpoint();
 
     using (var scope = app.Services.CreateScope())
     {

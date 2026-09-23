@@ -5,62 +5,131 @@
   "timezone": "browser",
   "schemaVersion": 39,
   "refresh": "10s",
-  "time": { "from": "now-15m", "to": "now" },
+  "time": { "from": "now-1h", "to": "now" },
   "templating": { "list": [] },
   "panels": [
     {
       "id": 1,
-      "title": "API - Requests per second",
+      "title": "API - HTTP requests per second",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_received_total[1m])) by (method)",
-          "legendFormat": "{{method}}"
+          "expr": "sum(rate(http_server_request_duration_seconds_count[1m]))",
+          "legendFormat": "requests/sec"
         }
       ]
     },
     {
       "id": 2,
-      "title": "API - Error rate (5xx)",
+      "title": "API - HTTP 5xx error rate",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "noValue": "0%" }, "overrides": [] },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_received_total{code=~\"5..\"}[1m])) / sum(rate(http_requests_received_total[1m]))",
+          "expr": "(sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m]))) or vector(0)",
           "legendFormat": "5xx ratio"
         }
       ]
     },
     {
       "id": 3,
-      "title": "API - Request duration (p95)",
+      "title": "API - p95 latency (ms)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "noValue": "0" }, "overrides": [] },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "(histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le)) * 1000) or vector(0)",
           "legendFormat": "p95"
         }
       ]
     },
     {
       "id": 4,
-      "title": "Process working set (MB)",
+      "title": "Saga duration (p95, ms)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "noValue": "0" }, "overrides": [] },
       "targets": [
         {
-          "expr": "process_working_set_bytes / 1024 / 1024",
-          "legendFormat": "{{job}}"
+          "expr": "(histogram_quantile(0.95, sum(rate(saga_duration_milliseconds_bucket[5m])) by (le, outcome)) ) or vector(0)",
+          "legendFormat": "{{outcome}}"
         }
       ]
     },
     {
       "id": 5,
+      "title": "Business counters (total)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        { "expr": "sum(bookings_confirmed_count_total) or vector(0)", "legendFormat": "Confirmed" },
+        { "expr": "sum(bookings_expired_count_total) or vector(0)", "legendFormat": "Expired" },
+        { "expr": "sum(bookings_cancelled_count_total) or vector(0)", "legendFormat": "Cancelled" },
+        { "expr": "sum(flights_scheduled_count_total) or vector(0)", "legendFormat": "Flights" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Cache hit ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "noValue": "0%" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_hits_count_total[5m])) / clamp_min(sum(rate(cache_hits_count_total[5m])) + sum(rate(cache_misses_count_total[5m])), 0.001)",
+          "legendFormat": "hit ratio"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Process memory (MB)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "decmbytes" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "dotnet_process_memory_working_set_bytes / 1024 / 1024",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Active HTTP requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "http_server_active_requests",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
       "title": "Recent traces (Jaeger)",
       "type": "jaeger-search",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 30 },
       "datasource": { "type": "jaeger", "uid": "jaeger" },
       "targets": [
         {

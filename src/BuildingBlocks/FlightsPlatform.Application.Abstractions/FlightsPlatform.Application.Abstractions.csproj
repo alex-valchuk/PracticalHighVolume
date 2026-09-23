@@ -9,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FlightsPlatform.SharedKernel\FlightsPlatform.SharedKernel.csproj" />
+    <ProjectReference Include="..\FlightsPlatform.Observability\FlightsPlatform.Observability.csproj" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FlightsPlatform.Application.Abstractions;
+using FlightsPlatform.Observability;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
@@ -33,16 +34,27 @@ internal sealed class RedisCacheService : ICacheService
         {
             var db = _redis.GetDatabase();
             var value = await db.StringGetAsync(key);
-            if (!value.HasValue) return default;
+
+            if (!value.HasValue)
+            {
+                Meters.CacheMisses.Add(1, new KeyValuePair<string, object?>("cache", "flight-catalog"));
+                return default;
+            }
 
             var json = value.ToString();
-            if (string.IsNullOrEmpty(json)) return default;
+            if (string.IsNullOrEmpty(json))
+            {
+                Meters.CacheMisses.Add(1, new KeyValuePair<string, object?>("cache", "flight-catalog"));
+                return default;
+            }
 
+            Meters.CacheHits.Add(1, new KeyValuePair<string, object?>("cache", "flight-catalog"));
             return JsonSerializer.Deserialize<T>(json, JsonOptions);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Redis GET failed for key {Key}; returning cache miss", key);
+            Meters.CacheMisses.Add(1, new KeyValuePair<string, object?>("cache", "flight-catalog"));
             return default;
         }
     }
