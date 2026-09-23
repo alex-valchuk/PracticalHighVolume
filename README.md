@@ -533,7 +533,7 @@ removes one more coupling from the current single-process deployment.
 - [x] **Phase 5** — Redis: distributed cache and locks, so modules can scale apart
 - [x] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox,
       so modules stop calling each other synchronously
-- [ ] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
+- [x] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
       see each future service's traces, metrics, and logs
 - [ ] **Phase 8** — Containerization + Kubernetes + .NET Aspire: each module
       becomes a deployment unit
