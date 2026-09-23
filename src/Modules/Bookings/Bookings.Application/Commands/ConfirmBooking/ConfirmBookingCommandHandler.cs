@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using Bookings.Application.Abstractions;
 using Bookings.Domain;
 using Bookings.Domain.Aggregates;
 using FlightsPlatform.Application.Abstractions;
 using FlightsPlatform.Contracts.Bookings;
+using FlightsPlatform.Observability;
 using FlightsPlatform.SharedKernel;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -43,6 +45,38 @@ public sealed class ConfirmBookingCommandHandler
 
     public async Task<Result<ConfirmBookingResult>> Handle(ConfirmBookingCommand request, CancellationToken ct)
     {
+        using var sagaActivity = ActivitySources.Saga.Instance.StartActivity(
+            "saga.confirm_booking",
+            ActivityKind.Internal);
+
+        sagaActivity?.SetTag("booking.id", request.BookingId);
+
+        var sw = Stopwatch.StartNew();
+        var outcome = "unknown";
+
+        try
+        {
+            var result = await ExecuteAsync(request, ct);
+            outcome = result.IsSuccess ? "success" : "failure";
+            sagaActivity?.SetTag("saga.outcome", outcome);
+            return result;
+        }
+        catch
+        {
+            outcome = "error";
+            sagaActivity?.SetTag("saga.outcome", outcome);
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            Meters.SagaDuration.Record(sw.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("outcome", outcome));
+        }
+    }
+
+    private async Task<Result<ConfirmBookingResult>> ExecuteAsync(ConfirmBookingCommand request, CancellationToken ct)
+    {
         var booking = await _repository.GetByIdAsync(request.BookingId, ct);
         if (booking is null)
             return Result<ConfirmBookingResult>.Failure("Booking not found.", "not_found");
@@ -66,45 +100,61 @@ public sealed class ConfirmBookingCommandHandler
 
         try
         {
-            foreach (var ticket in booking.Tickets)
+            using (var step = ActivitySources.Saga.Instance.StartActivity("saga.step.verify_and_reserve"))
             {
-                var flight = await _flightCatalog.GetFlightAsync(ticket.FlightId, ct);
-                if (flight is null)
-                    throw new SagaFailureException("Flight " + ticket.FlightId + " not found.");
+                foreach (var ticket in booking.Tickets)
+                {
+                    var flight = await _flightCatalog.GetFlightAsync(ticket.FlightId, ct);
+                    if (flight is null)
+                        throw new SagaFailureException("Flight " + ticket.FlightId + " not found.");
 
-                if (flight.Status != FlightStatusScheduled && flight.Status != FlightStatusDelayed)
-                    throw new SagaFailureException("Flight " + ticket.FlightId + " is not available.");
+                    if (flight.Status != FlightStatusScheduled && flight.Status != FlightStatusDelayed)
+                        throw new SagaFailureException("Flight " + ticket.FlightId + " is not available.");
 
-                var reservationId = await _seatReservations.ReserveAsync(
-                    booking.Id, ticket.Id, ticket.FlightId, ct);
-                reservedIds.Add(reservationId);
+                    var reservationId = await _seatReservations.ReserveAsync(
+                        booking.Id, ticket.Id, ticket.FlightId, ct);
+                    reservedIds.Add(reservationId);
+                }
+
+                step?.SetTag("seats.reserved", reservedIds.Count);
             }
 
-            var paymentResult = await _paymentGateway.ChargeAsync(
-                booking.Id, booking.TotalAmount.Amount, booking.TotalAmount.Currency, ct);
-
-            if (!paymentResult.Success)
-                throw new SagaFailureException(paymentResult.FailureReason ?? "Payment failed.");
-
-            paymentId = paymentResult.PaymentId;
-
-            if (paymentResult.SimulateFailureAfterCharge)
-                throw new SagaFailureException("Simulated failure after charge (demo).");
-
-            booking.Confirm();
-
-            await _publisher.PublishAsync(new BookingConfirmedIntegrationEvent
+            using (var step = ActivitySources.Saga.Instance.StartActivity("saga.step.charge_payment"))
             {
-                BookingId = booking.Id,
-                BookingReference = booking.BookRef.Value,
-                PassengerId = booking.PassengerId.Value,
-                PassengerName = booking.PassengerName.Value,
-                TotalAmount = booking.TotalAmount.Amount,
-                Currency = booking.TotalAmount.Currency,
-                TicketCount = booking.Tickets.Count
-            }, ct);
+                var paymentResult = await _paymentGateway.ChargeAsync(
+                    booking.Id, booking.TotalAmount.Amount, booking.TotalAmount.Currency, ct);
 
-            await _unitOfWork.SaveChangesAsync(ct);
+                if (!paymentResult.Success)
+                    throw new SagaFailureException(paymentResult.FailureReason ?? "Payment failed.");
+
+                paymentId = paymentResult.PaymentId;
+                step?.SetTag("payment.id", paymentId?.ToString());
+                step?.SetTag("payment.amount", booking.TotalAmount.Amount);
+
+                if (paymentResult.SimulateFailureAfterCharge)
+                    throw new SagaFailureException("Simulated failure after charge (demo).");
+            }
+
+            using (var step = ActivitySources.Saga.Instance.StartActivity("saga.step.confirm"))
+            {
+                booking.Confirm();
+
+                await _publisher.PublishAsync(new BookingConfirmedIntegrationEvent
+                {
+                    BookingId = booking.Id,
+                    BookingReference = booking.BookRef.Value,
+                    PassengerId = booking.PassengerId.Value,
+                    PassengerName = booking.PassengerName.Value,
+                    TotalAmount = booking.TotalAmount.Amount,
+                    Currency = booking.TotalAmount.Currency,
+                    TicketCount = booking.Tickets.Count
+                }, ct);
+
+                await _unitOfWork.SaveChangesAsync(ct);
+                step?.SetTag("booking.status", booking.Status.ToString());
+            }
+
+            Meters.BookingsConfirmed.Add(1);
 
             _logger.LogInformation("Saga completed: booking {BookingId} confirmed", booking.Id);
 
@@ -145,12 +195,18 @@ public sealed class ConfirmBookingCommandHandler
         string reason,
         CancellationToken ct)
     {
+        using var compensationActivity = ActivitySources.Saga.Instance.StartActivity(
+            "saga.compensation",
+            ActivityKind.Internal);
+        compensationActivity?.SetTag("compensation.reason", reason);
+
         _logger.LogWarning(
             "Saga compensation started for booking {BookingId}: reservations={Count}, payment={PaymentId}",
             booking.Id, reservedIds.Count, paymentId?.ToString() ?? "none");
 
         if (paymentId.HasValue)
         {
+            using var refundStep = ActivitySources.Saga.Instance.StartActivity("saga.compensation.refund");
             try
             {
                 await _paymentGateway.RefundAsync(paymentId.Value, ct);
@@ -158,18 +214,23 @@ public sealed class ConfirmBookingCommandHandler
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Saga compensation: refund failed for payment {PaymentId}", paymentId.Value);
+                refundStep?.SetStatus(ActivityStatusCode.Error, ex.Message);
             }
         }
 
-        foreach (var id in reservedIds)
+        if (reservedIds.Count > 0)
         {
-            try
+            using var releaseStep = ActivitySources.Saga.Instance.StartActivity("saga.compensation.release_seats");
+            foreach (var id in reservedIds)
             {
-                await _seatReservations.ReleaseAsync(id, ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Saga compensation: release failed for reservation {ReservationId}", id);
+                try
+                {
+                    await _seatReservations.ReleaseAsync(id, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Saga compensation: release failed for reservation {ReservationId}", id);
+                }
             }
         }
 
@@ -185,6 +246,8 @@ public sealed class ConfirmBookingCommandHandler
             }, ct);
 
             await _unitOfWork.SaveChangesAsync(ct);
+
+            Meters.BookingsExpired.Add(1);
         }
         catch (Exception ex)
         {

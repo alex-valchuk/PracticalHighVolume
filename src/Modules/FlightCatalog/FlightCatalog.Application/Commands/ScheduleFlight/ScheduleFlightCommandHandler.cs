@@ -3,6 +3,7 @@ using FlightCatalog.Domain.Aggregates;
 using FlightCatalog.Domain.ValueObjects;
 using FlightsPlatform.Application.Abstractions;
 using FlightsPlatform.Contracts.FlightCatalog;
+using FlightsPlatform.Observability;
 using FlightsPlatform.SharedKernel;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -42,8 +43,6 @@ public sealed class ScheduleFlightCommandHandler : IRequestHandler<ScheduleFligh
 
             await _repository.AddAsync(flight, ct);
 
-            // Outbox pattern: publish first (queues in scoped outbox),
-            // then SaveChanges flushes both aggregate and outbox row atomically.
             await _publisher.PublishAsync(new FlightScheduledIntegrationEvent
             {
                 FlightId = flight.Id,
@@ -55,6 +54,8 @@ public sealed class ScheduleFlightCommandHandler : IRequestHandler<ScheduleFligh
             }, ct);
 
             await _unitOfWork.SaveChangesAsync(ct);
+
+            Meters.FlightsScheduled.Add(1);
 
             _logger.LogInformation("Scheduled flight {FlightId} ({FlightNumber})",
                 flight.Id, flight.FlightNumber.Value);

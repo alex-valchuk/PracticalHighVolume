@@ -3,7 +3,7 @@
 | Field      | Value                                        |
 | ---------- | -------------------------------------------- |
 | Spec ID    | SPEC-005                                     |
-| Status          | Accepted (5.2.2 cancelled)              |
+| Status     | Accepted (5.2.2 cancelled)              |
 | Phase      | 5                                            |
 | Created    | 2026-09-16                                   |
 | Depends on | SPEC-004 (Angular SPA)                       |

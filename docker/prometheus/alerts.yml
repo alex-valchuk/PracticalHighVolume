@@ -1,0 +1,33 @@
+groups:
+  - name: flights-platform
+    interval: 30s
+    rules:
+      - alert: ApiHighErrorRate
+        expr: |
+          sum(rate(http_requests_received_total{code=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_received_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 5xx error rate above 5%"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: WorkerDown
+        expr: up{job=~"flights-platform-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.instance }}."
+
+      - alert: HighProcessMemory
+        expr: process_working_set_bytes / 1024 / 1024 > 800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Process memory above 800 MB"
+          description: "Process {{ $labels.job }} uses {{ $value }} MB."

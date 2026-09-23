@@ -3,7 +3,7 @@
 | Field           | Value                                 |
 |-----------------|---------------------------------------|
 | Spec ID         | SPEC-003.2                            |
-| Status          | Draft - awaiting approval             |
+| Status          | Accepted                              |
 | Phase           | 3.2                                   |
 | Created         | 2026-09-15                            |
 | Depends on      | SPEC-003.1 (Bookings module skeleton) |

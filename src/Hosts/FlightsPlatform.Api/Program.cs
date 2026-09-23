@@ -11,22 +11,29 @@ using FlightsPlatform.Api.Messaging;
 using FlightsPlatform.Application.Abstractions;
 using FlightsPlatform.Application.Abstractions.Behaviors;
 using FlightsPlatform.Infrastructure.Redis;
+using FlightsPlatform.Observability;
 using FluentValidation;
 using MassTransit;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
 using Scalar.AspNetCore;
 using Serilog;
 using FlightsPlatform.SharedKernel;
 
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
+    .Enrich.FromLogContext()
+    .WriteTo.Console(
+        outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] [trace={TraceId} span={SpanId}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File(
         path: "logs/api-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 7,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+        outputTemplate:
+        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [trace={TraceId} span={SpanId}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
@@ -48,6 +55,21 @@ try
         });
     });
 
+    builder.Services.AddFlightsPlatformObservability(
+        builder.Configuration,
+        o => o.ServiceName = "FlightsPlatform.Api",
+        PrometheusExporterMode.AspNetCore);
+
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(
+            builder.Configuration.GetConnectionString("FlightCatalog")!,
+            name: "postgres",
+            tags: new[] { "ready" })
+        .AddRedis(
+            builder.Configuration["Redis:ConnectionString"] ?? "127.0.0.1:6379",
+            name: "redis",
+            tags: new[] { "ready" });
+
     builder.Services.AddMediatR(cfg =>
     {
         cfg.RegisterServicesFromAssemblies(
@@ -56,13 +78,12 @@ try
 
         cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
         cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+        cfg.AddOpenBehavior(typeof(TracingBehavior<,>));
     });
 
     builder.Services.AddRedisInfrastructure(builder.Configuration);
-
     builder.Services.AddFlightCatalogApplication();
     builder.Services.AddFlightCatalogInfrastructure(builder.Configuration);
-
     builder.Services.AddBookingsApplication();
     builder.Services.AddBookingsInfrastructure(builder.Configuration);
 
@@ -72,10 +93,6 @@ try
     {
         x.SetKebabCaseEndpointNameFormatter();
 
-        // MassTransit 8.x supports transactional outbox for a single DbContext only.
-        // Bookings is chosen because it carries the saga and critical events
-        // (BookingConfirmed, BookingExpired). FlightCatalog events are published
-        // directly without the outbox guarantee.
         x.AddEntityFrameworkOutbox<BookingDbContext>(o =>
         {
             o.UsePostgres();
@@ -152,6 +169,19 @@ try
     }))
     .WithTags("Health")
     .WithName("GetHealth");
+
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false
+    });
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    });
+
+    // OTel Prometheus scraping endpoint (exposes all meters: HTTP, runtime, business).
+    app.MapPrometheusScrapingEndpoint();
 
     using (var scope = app.Services.CreateScope())
     {

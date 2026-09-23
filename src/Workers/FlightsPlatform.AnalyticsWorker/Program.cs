@@ -1,5 +1,6 @@
 using FlightsPlatform.AnalyticsWorker.Consumers;
 using FlightsPlatform.AnalyticsWorker.Persistence;
+using FlightsPlatform.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -16,13 +17,15 @@ builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
+builder.Services.AddFlightsPlatformObservability(
+    builder.Configuration,
+    o => o.ServiceName = "FlightsPlatform.AnalyticsWorker",
+    PrometheusExporterMode.HttpListener);
+
 builder.Services.AddDbContext<AnalyticsDbContext>(opts =>
 {
     var cs = builder.Configuration.GetConnectionString("Analytics");
-    if (string.IsNullOrWhiteSpace(cs))
-    {
-        cs = DefaultAnalyticsConnection;
-    }
+    if (string.IsNullOrWhiteSpace(cs)) cs = DefaultAnalyticsConnection;
 
     opts.UseNpgsql(cs, npgsql =>
         npgsql.MigrationsHistoryTable("__EFMigrationsHistory", AnalyticsDbContext.SchemaName));
@@ -47,12 +50,7 @@ builder.Services.AddMassTransit(x =>
         var user = builder.Configuration["RabbitMq:Username"] ?? "guest";
         var pass = builder.Configuration["RabbitMq:Password"] ?? "guest";
 
-        cfg.Host(host, vhost, h =>
-        {
-            h.Username(user);
-            h.Password(pass);
-        });
-
+        cfg.Host(host, vhost, h => { h.Username(user); h.Password(pass); });
         cfg.ConfigureEndpoints(context);
     });
 });

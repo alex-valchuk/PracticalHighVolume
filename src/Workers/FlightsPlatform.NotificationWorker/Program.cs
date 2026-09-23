@@ -1,5 +1,6 @@
 using FlightsPlatform.NotificationWorker.Consumers;
 using FlightsPlatform.NotificationWorker.Persistence;
+using FlightsPlatform.Observability;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -11,20 +12,20 @@ const string DefaultNotificationConnection =
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Explicitly load appsettings.json from the project directory,
-// so the worker works regardless of the working directory dotnet run uses.
 builder.Configuration
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
+builder.Services.AddFlightsPlatformObservability(
+    builder.Configuration,
+    o => o.ServiceName = "FlightsPlatform.NotificationWorker",
+    PrometheusExporterMode.HttpListener);
+
 builder.Services.AddDbContext<NotificationDbContext>(opts =>
 {
     var cs = builder.Configuration.GetConnectionString("Notification");
-    if (string.IsNullOrWhiteSpace(cs))
-    {
-        cs = DefaultNotificationConnection;
-    }
+    if (string.IsNullOrWhiteSpace(cs)) cs = DefaultNotificationConnection;
 
     opts.UseNpgsql(cs, npgsql =>
         npgsql.MigrationsHistoryTable("__EFMigrationsHistory", NotificationDbContext.SchemaName));
@@ -33,7 +34,6 @@ builder.Services.AddDbContext<NotificationDbContext>(opts =>
 builder.Services.AddMassTransit(x =>
 {
     x.SetKebabCaseEndpointNameFormatter();
-
     x.AddConsumer<BookingConfirmedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
@@ -43,11 +43,7 @@ builder.Services.AddMassTransit(x =>
         var user = builder.Configuration["RabbitMq:Username"] ?? "guest";
         var pass = builder.Configuration["RabbitMq:Password"] ?? "guest";
 
-        cfg.Host(host, vhost, h =>
-        {
-            h.Username(user);
-            h.Password(pass);
-        });
+        cfg.Host(host, vhost, h => { h.Username(user); h.Password(pass); });
 
         cfg.ReceiveEndpoint("notification-booking-confirmed", e =>
         {
@@ -56,7 +52,6 @@ builder.Services.AddMassTransit(x =>
                 TimeSpan.FromSeconds(10),
                 TimeSpan.FromSeconds(30),
                 TimeSpan.FromMinutes(2)));
-
             e.ConfigureConsumer<BookingConfirmedConsumer>(context);
         });
     });

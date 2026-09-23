@@ -1,6 +1,7 @@
 using Bookings.Application.Abstractions;
 using FlightsPlatform.Application.Abstractions;
 using FlightsPlatform.Contracts.Bookings;
+using FlightsPlatform.Observability;
 using FlightsPlatform.SharedKernel;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -54,6 +55,8 @@ public sealed class CancelBookingCommandHandler : IRequestHandler<CancelBookingC
         }, ct);
 
         await _unitOfWork.SaveChangesAsync(ct);
+
+        Meters.BookingsCancelled.Add(1);
 
         _logger.LogInformation("Booking {BookingId} cancelled: {Reason}", booking.Id, request.Reason);
 
