@@ -1,0 +1,45 @@
+{{- if .Values.notificationWorker.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "flights.fullname" . }}-notification-worker
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "flights.fullname" . }}-notification-worker
+  minReplicas: {{ .Values.notificationWorker.hpa.minReplicas }}
+  maxReplicas: {{ .Values.notificationWorker.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.notificationWorker.hpa.targetCPU }}
+---
+{{- end }}
+{{- if .Values.analyticsWorker.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "flights.fullname" . }}-analytics-worker
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "flights.fullname" . }}-analytics-worker
+  minReplicas: {{ .Values.analyticsWorker.hpa.minReplicas }}
+  maxReplicas: {{ .Values.analyticsWorker.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.analyticsWorker.hpa.targetCPU }}
+{{- end }}

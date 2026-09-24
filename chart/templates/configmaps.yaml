@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "flights.fullname" . }}-api
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+data:
+  ASPNETCORE_ENVIRONMENT: {{ .Values.api.env.ASPNETCORE_ENVIRONMENT | quote }}
+  ASPNETCORE_URLS: "http://+:{{ .Values.api.port }}"
+  ConnectionStrings__FlightCatalog: {{ include "flights.postgresConnection" . | quote }}
+  ConnectionStrings__Booking: {{ include "flights.postgresConnection" . | quote }}
+  Redis__ConnectionString: "{{ include "flights.fullname" . }}-redis:{{ .Values.redis.port }}"
+  RabbitMq__Host: {{ include "flights.rabbitHost" . | quote }}
+  RabbitMq__VirtualHost: "/"
+  RabbitMq__Username: {{ .Values.secrets.rabbitmqUser | quote }}
+  RabbitMq__Password: {{ .Values.secrets.rabbitmqPassword | quote }}
+  Observability__ServiceName: "FlightsPlatform.Api"
+  Observability__OtlpEndpoint: {{ include "flights.jaegerOtlp" . | quote }}
+  Observability__TraceSamplingRatio: "1.0"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "flights.fullname" . }}-notification-worker
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+data:
+  DOTNET_ENVIRONMENT: {{ .Values.api.env.ASPNETCORE_ENVIRONMENT | quote }}
+  ConnectionStrings__Notification: {{ include "flights.postgresConnection" . | quote }}
+  RabbitMq__Host: {{ include "flights.rabbitHost" . | quote }}
+  RabbitMq__VirtualHost: "/"
+  RabbitMq__Username: {{ .Values.secrets.rabbitmqUser | quote }}
+  RabbitMq__Password: {{ .Values.secrets.rabbitmqPassword | quote }}
+  Observability__ServiceName: "FlightsPlatform.NotificationWorker"
+  Observability__OtlpEndpoint: {{ include "flights.jaegerOtlp" . | quote }}
+  Observability__MetricsPort: {{ .Values.notificationWorker.metricsPort | quote }}
+  Observability__TraceSamplingRatio: "1.0"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "flights.fullname" . }}-analytics-worker
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+data:
+  DOTNET_ENVIRONMENT: {{ .Values.api.env.ASPNETCORE_ENVIRONMENT | quote }}
+  ConnectionStrings__Analytics: {{ include "flights.postgresConnection" . | quote }}
+  RabbitMq__Host: {{ include "flights.rabbitHost" . | quote }}
+  RabbitMq__VirtualHost: "/"
+  RabbitMq__Username: {{ .Values.secrets.rabbitmqUser | quote }}
+  RabbitMq__Password: {{ .Values.secrets.rabbitmqPassword | quote }}
+  Observability__ServiceName: "FlightsPlatform.AnalyticsWorker"
+  Observability__OtlpEndpoint: {{ include "flights.jaegerOtlp" . | quote }}
+  Observability__MetricsPort: {{ .Values.analyticsWorker.metricsPort | quote }}
+  Observability__TraceSamplingRatio: "1.0"

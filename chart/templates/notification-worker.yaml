@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flights.fullname" . }}-notification-worker
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+    app.kubernetes.io/component: notification-worker
+spec:
+  replicas: {{ .Values.notificationWorker.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: notification-worker
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: notification-worker
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.notificationWorker.image.repository }}:{{ .Values.notificationWorker.image.tag }}"
+          imagePullPolicy: {{ .Values.notificationWorker.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.notificationWorker.metricsPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "flights.fullname" . }}-notification-worker
+          resources:
+            {{- toYaml .Values.notificationWorker.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: metrics
+            initialDelaySeconds: 20
+            periodSeconds: 20
