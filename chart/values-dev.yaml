@@ -1,0 +1,34 @@
+# Dev overrides - matches docker-compose defaults.
+# Used with: helm install flights ./chart -f chart/values-dev.yaml
+
+global:
+  namespace: flights-platform
+
+api:
+  replicas: 1
+  env:
+    ASPNETCORE_ENVIRONMENT: Development
+
+notificationWorker:
+  replicas: 1
+
+analyticsWorker:
+  replicas: 1
+
+postgres:
+  storage: 2Gi
+
+redis:
+  storage: 512Mi
+
+rabbitmq:
+  storage: 1Gi
+
+prometheus:
+  storage: 2Gi
+
+grafana:
+  storage: 512Mi
+
+ingress:
+  enabled: true

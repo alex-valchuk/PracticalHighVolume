@@ -1,0 +1,49 @@
+# Production-like overrides. Adjust image repos and secrets before deploy.
+
+global:
+  namespace: flights-platform
+
+api:
+  replicas: 3
+  env:
+    ASPNETCORE_ENVIRONMENT: Production
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+
+notificationWorker:
+  replicas: 2
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+analyticsWorker:
+  replicas: 2
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+postgres:
+  storage: 20Gi
+
+redis:
+  storage: 5Gi
+
+rabbitmq:
+  storage: 10Gi
+
+prometheus:
+  storage: 20Gi
+
+grafana:
+  storage: 2Gi
+
+# NOTE: override secrets via --set or External Secrets in real prod.

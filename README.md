@@ -439,6 +439,55 @@ dotnet test tests/Bookings.UnitTests
 
 ---
 
+<!-- ENVIRONMENTS-SECTION -->
+
+## Environments
+
+Three local run options. Pick based on the task.
+
+| Option | Backend | Frontend | Best for |
+|--------|---------|----------|----------|
+| **Local IDE** | `dotnet run` from Visual Studio | `npm run dev:local` | Debugging the API, breakpoints |
+| **Kubernetes (kind)** | kind cluster, Helm chart | `npm run dev:k8s` | Validating K8s manifests, demos |
+| **Aspire** | Aspire AppHost, all services + dashboard | `npm run dev` with API URL | Fast dev loop, built-in observability |
+
+### Local IDE
+
+    docker compose up -d
+    # then press F5 in Visual Studio (FlightsPlatform.Api)
+
+    cd frontend
+    npm run dev:local
+
+### Kubernetes (kind)
+
+    helm upgrade --install flights ./chart -f ./chart/values-dev.yaml -n flights-platform --create-namespace
+    kubectl get pods -n flights-platform --watch
+
+    cd frontend
+    npm run dev:k8s
+
+### Aspire
+
+    dotnet run --project src/Hosts/FlightPlatform.AppHost
+    # copy the API URL from the dashboard
+
+    cd frontend
+    $env:API_TARGET = "http://localhost:<port-from-dashboard>"
+    npm run dev
+
+### Helper scripts
+
+    .\scripts\dev-local.ps1     # local IDE environment
+    .\scripts\dev-k8s.ps1       # K8s environment
+    .\scripts\stop-local.ps1
+    .\scripts\stop-k8s.ps1
+
+### Full instructions
+
+- [`docs/environments.md`](docs/environments.md) - reference.
+- [`docs/quickstart.md`](docs/quickstart.md) - daily shortcuts.
+- [`frontend/README.md`](frontend/README.md) - SPA setup.
 ## End-to-end walkthrough
 
 1. **Airports** → click **Sync from source**.
@@ -535,7 +584,7 @@ removes one more coupling from the current single-process deployment.
       so modules stop calling each other synchronously
 - [x] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
       see each future service's traces, metrics, and logs
-- [ ] **Phase 8** — Containerization + Kubernetes + .NET Aspire: each module
+- [x] **Phase 8** - Containerization + Kubernetes + .NET Aspire
       becomes a deployment unit
 - [ ] **Phase 9** — Final polish, demo scenarios
 

@@ -46,11 +46,19 @@ builder.Services.AddMassTransit(x =>
     x.UsingRabbitMq((context, cfg) =>
     {
         var host = builder.Configuration["RabbitMq:Host"] ?? "localhost";
+        var port = builder.Configuration.GetValue<int?>("RabbitMq:Port") ?? 5672;
         var vhost = builder.Configuration["RabbitMq:VirtualHost"] ?? "/";
         var user = builder.Configuration["RabbitMq:Username"] ?? "guest";
         var pass = builder.Configuration["RabbitMq:Password"] ?? "guest";
 
-        cfg.Host(host, vhost, h => { h.Username(user); h.Password(pass); });
+        var vhostInUri = vhost.TrimStart('/');
+        var rabbitUri = new Uri($"rabbitmq://{host}:{port}/{vhostInUri}");
+
+        cfg.Host(rabbitUri, h =>
+        {
+            h.Username(user);
+            h.Password(pass);
+        });
         cfg.ConfigureEndpoints(context);
     });
 });

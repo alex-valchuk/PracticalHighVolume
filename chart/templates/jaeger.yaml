@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "flights.fullname" . }}-jaeger
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+    app.kubernetes.io/component: jaeger
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: jaeger
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: ui
+      port: {{ .Values.jaeger.uiPort }}
+      targetPort: ui
+    - name: otlp-grpc
+      port: {{ .Values.jaeger.otlpGrpcPort }}
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: {{ .Values.jaeger.otlpHttpPort }}
+      targetPort: otlp-http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flights.fullname" . }}-jaeger
+  labels:
+    {{- include "flights.labels" . | nindent 4 }}
+    app.kubernetes.io/component: jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: jaeger
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: jaeger
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: jaeger
+          image: "{{ .Values.jaeger.image.repository }}:{{ .Values.jaeger.image.tag }}"
+          ports:
+            - name: ui
+              containerPort: {{ .Values.jaeger.uiPort }}
+            - name: otlp-grpc
+              containerPort: {{ .Values.jaeger.otlpGrpcPort }}
+            - name: otlp-http
+              containerPort: {{ .Values.jaeger.otlpHttpPort }}
+          env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+          resources:
+            {{- toYaml .Values.jaeger.resources | nindent 12 }}
