@@ -1,0 +1,79 @@
+name: Helm Lint
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'chart/**'
+      - '.github/workflows/helm-lint.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'chart/**'
+      - '.github/workflows/helm-lint.yml'
+  workflow_dispatch:
+
+jobs:
+  lint-and-validate:
+    name: Lint and validate chart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL -o /tmp/kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
+      - name: Lint chart
+        run: helm lint ./chart
+
+      - name: Render chart with dev values
+        run: |
+          helm template flights ./chart \
+            -f ./chart/values-dev.yaml \
+            > /tmp/rendered-dev.yaml
+          echo "Rendered $(wc -l < /tmp/rendered-dev.yaml) lines for dev"
+
+      - name: Validate dev manifests with kubeconform
+        run: |
+          kubeconform \
+            -strict \
+            -summary \
+            -kubernetes-version 1.30.0 \
+            /tmp/rendered-dev.yaml
+
+      - name: Render chart with prod values
+        run: |
+          helm template flights ./chart \
+            -f ./chart/values-prod.yaml \
+            > /tmp/rendered-prod.yaml
+          echo "Rendered $(wc -l < /tmp/rendered-prod.yaml) lines for prod"
+
+      - name: Validate prod manifests with kubeconform
+        run: |
+          kubeconform \
+            -strict \
+            -summary \
+            -kubernetes-version 1.30.0 \
+            /tmp/rendered-prod.yaml
+
+      - name: Upload rendered manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-manifests
+          path: |
+            /tmp/rendered-dev.yaml
+            /tmp/rendered-prod.yaml
+          retention-days: 7
