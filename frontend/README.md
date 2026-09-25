@@ -1,59 +1,91 @@
 # Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.8.
+Angular 22 SPA for the Flights Platform.
 
-## Development server
+## Setup
 
-To start a local development server, run:
+From this directory:
 
-```bash
-ng serve
-```
+    npm install
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Running against the Local backend
 
-## Code scaffolding
+1. From the repository root, start infrastructure:
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+       docker compose up -d
 
-```bash
-ng generate component component-name
-```
+2. Start the API from Visual Studio (F5).
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+3. From this directory, start the SPA:
 
-```bash
-ng generate --help
-```
+       npm run dev:local
 
-## Building
+4. Open the browser:
 
-To build the project run:
+       http://localhost:4200
 
-```bash
-ng build
-```
+## Running against the Kubernetes backend
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+1. Verify pods are running:
 
-## Running unit tests
+       kubectl get pods -n flights-platform
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+2. From this directory, start the SPA:
 
-```bash
-ng test
-```
+       npm run dev:k8s
 
-## Running end-to-end tests
+3. Open the browser:
 
-For end-to-end (e2e) testing, run:
+       http://localhost:4200
 
-```bash
-ng e2e
-```
+## Running against a custom backend
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Set the target explicitly, then start:
 
-## Additional Resources
+    $env:API_TARGET = "https://api.staging.example.com"
+    npm run dev
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Alternatively, create `frontend/.env`:
+
+    API_TARGET=https://api.staging.example.com
+
+Then run:
+
+    npm run dev
+
+## npm scripts
+
+| Script            | Target                                |
+| ----------------- | ------------------------------------- |
+| `npm run dev:local` | `https://localhost:50943`           |
+| `npm run dev:k8s`   | `http://api.flights.local`          |
+| `npm run dev`       | value from `.env`, or local default |
+| `npm run build`     | production build into `dist/`       |
+| `npm test`          | unit tests                          |
+
+## Project files
+
+    .env              local overrides, git-ignored
+    .env.example      template, committed
+    proxy.conf.js     reads API_TARGET, forwards /api/* to the backend
+    angular.json      serve.options.proxyConfig = "proxy.conf.js"
+
+## How requests reach the backend
+
+The SPA sends every request to `/api/*`. The dev server proxies those
+requests to the value of `API_TARGET`. On startup the proxy prints the
+effective target:
+
+    [proxy] Forwarding /api/* -> https://localhost:50943/*
+
+That line indicates which backend the SPA is currently using.
+
+## Adding a new environment
+
+1. Add a script to `package.json`:
+
+       "dev:staging": "cross-env API_TARGET=https://api.staging.example.com ng serve --proxy-config proxy.conf.js"
+
+2. Run it:
+
+       npm run dev:staging

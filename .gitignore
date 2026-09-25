@@ -430,3 +430,8 @@ FodyWeavers.xsd
 
 logs/
 api-log.txt
+
+# Frontend environment overrides
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
