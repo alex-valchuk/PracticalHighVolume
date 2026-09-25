@@ -6,6 +6,8 @@ All commands assume the current directory is the repository root unless
 stated otherwise.
 
 > For daily use, prefer the helper scripts. See `quickstart.md`.
+>
+> Three local run options: **Local IDE**, **Local K8s (kind)**, and **Aspire**.
 
 ---
 
@@ -209,6 +211,56 @@ and Angular reloads automatically.
 
 ---
 
+---
+
+## Aspire environment
+
+Everything runs from a single .NET Aspire AppHost. Postgres, Redis,
+RabbitMQ are containers; the API and both workers run as child
+processes. A dashboard shows logs, traces, and metrics for all services.
+
+**When to use:** daily development when you want observability without
+opening Jaeger and Grafana, or when you want to start everything with
+one command.
+
+### Start
+
+1. From the repository root, start the AppHost:
+
+       dotnet run --project src/Hosts/FlightPlatform.AppHost
+
+2. The Aspire dashboard opens in the browser. Open the API resource to
+   copy its URL (it is a random port like `http://localhost:5234`).
+
+3. Point the SPA at that URL. In a new terminal:
+
+       cd frontend
+       $env:API_TARGET = "http://localhost:5234"   # URL from the dashboard
+       npm run dev
+
+4. Open the SPA:
+
+       http://localhost:4200
+
+### Stop
+
+Press Ctrl+C in the AppHost terminal. Containers are stopped and removed
+by Aspire.
+
+### Rebuild after code changes
+
+The AppHost watches project references. Restart the affected resource
+from the dashboard (three-dots menu -> Restart), or press Ctrl+C and
+run the AppHost again.
+
+### Notes
+
+- Airport sync is disabled in this environment (the external demo
+  database is not provisioned by Aspire).
+- OpenTelemetry data flows to the Aspire dashboard automatically,
+  not to Jaeger. If you need Jaeger, use the Local or K8s environment.
+- Data is stored in Docker volumes named `flights-aspire-*`, preserved
+  between restarts.
 ## Switching between environments
 
 ### Local to Kubernetes

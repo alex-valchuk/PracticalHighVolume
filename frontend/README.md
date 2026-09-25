@@ -38,6 +38,26 @@ From this directory:
 
        http://localhost:4200
 
+## Running against the Aspire backend
+
+1. From the repository root, start the AppHost:
+
+       dotnet run --project src/Hosts/FlightPlatform.AppHost
+
+2. Copy the API URL from the Aspire dashboard (for example,
+   `http://localhost:5234`).
+
+3. From this directory, start the SPA with that URL:
+
+       $env:API_TARGET = "http://localhost:5234"
+       npm run dev
+
+4. Open the browser:
+
+       http://localhost:4200
+
+The `API_TARGET` value is shown in the Aspire dashboard under the
+`flights-api` resource.
 ## Running against a custom backend
 
 Set the target explicitly, then start:

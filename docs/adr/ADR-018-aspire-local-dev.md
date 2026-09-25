@@ -4,59 +4,77 @@
 Accepted
 
 ## Context
-Local development currently relies on `docker compose up` to start
-Postgres, Redis, RabbitMQ, Jaeger, Prometheus, Grafana, plus two
-dotnet-run terminal windows for API and one worker. This works, but:
+The platform supports three local development scenarios:
 
-- Juggling multiple terminals to see logs is tedious.
-- Trace/span inspection requires opening Jaeger in a browser.
-- There is no built-in way to correlate logs across processes in real time.
+1. **Local IDE** - API from Visual Studio, infrastructure from docker-compose.
+   Optimized for debugging the API.
+2. **Local K8s** - everything in a kind cluster. Optimized for validating
+   Kubernetes manifests and demonstrating production-like behavior.
+3. **Aspire** - single AppHost process that starts containers and child
+   processes, with a built-in dashboard for logs, traces, and metrics.
 
-.NET Aspire is Microsoft's official tool for local orchestration of
-distributed .NET applications. It provides:
-
-- A single command to start everything.
-- A developer dashboard with logs, traces, metrics for all services.
-- Automatic service discovery and connection string injection.
-- Optional containerized resources (Postgres, Redis, RabbitMQ).
+Each has a distinct purpose. They are not alternatives to each other;
+they coexist.
 
 ## Decision
 
-Add .NET Aspire **as an alternative** to docker-compose for local
-development. Both must work. Neither replaces the other.
+Add .NET Aspire as the third local orchestrator. It does not replace
+docker-compose or kind.
 
-- **docker-compose** remains the "closest to production" local option
-  and the one documented in the main README quickstart.
-- **Aspire AppHost** is the "developer productivity" option. It starts
-  the same services but with a first-class dashboard.
+### What Aspire gives us
 
-Aspire is **not** used for Kubernetes deployment. It is a local tool only.
+- One command starts Postgres, Redis, RabbitMQ, the API, and both workers.
+- A dashboard shows logs, traces, and metrics for all services in one UI.
+- Automatic service discovery and connection string injection.
+- Faster feedback than docker-compose for the daily dev loop.
+
+### What Aspire does not give us
+
+- It is not a deployment target. Aspire is a local development tool only.
+- It does not provision the external demo database, so airport sync is
+  disabled in this environment.
+- It does not replace Jaeger/Prometheus/Grafana; those are still useful
+  for a persistent observability history.
+
+### Configuration
+
+- `src/Hosts/FlightPlatform.AppHost` - the entry point.
+- `apphost.csproj` references the API and both workers as project
+  references. Aspire starts them as child processes.
+- Postgres, Redis, RabbitMQ run as containers, managed by Aspire.
+- Connection strings and RabbitMQ settings are injected via
+  `WithEnvironment(...)` in `Program.cs`.
+- `AirportSync__Enabled=false` - the external source is not available.
+
+### Running
+
+    dotnet run --project src/Hosts/FlightPlatform.AppHost
+
+The dashboard opens in a browser with the API URL. The SPA connects to
+that URL via the usual `API_TARGET` mechanism.
 
 ## Consequences
 
 Positive:
-- One command: `dotnet run --project src/Aspire/FlightsPlatform.AppHost`.
-- Dashboard shows logs, traces, metrics from all services side by side.
-- Faster feedback loop for development.
+- One-command startup for daily work.
+- Built-in dashboard for logs, traces, metrics.
 - Familiar to .NET developers in modern shops.
 
 Negative:
-- Adds an additional project to the solution.
-- Aspire is still evolving; APIs may change between versions.
-- Not all services in our stack are managed by Aspire (Jaeger,
-  Prometheus, Grafana are not first-class resources); we rely on
-  pre-existing containers for those.
+- Additional project in the solution.
+- Aspire evolves quickly; APIs may change between versions.
+- Not all services are Aspire resources: Jaeger, Prometheus, Grafana
+  are not started by the AppHost.
 
 ## Alternatives considered
 
-- **Only docker-compose.** Simpler, but loses the developer dashboard
-  and first-class .NET integration. Rejected as the sole option.
-
+- **Only docker-compose.** Loses the developer dashboard and first-class
+  .NET integration. Rejected as the sole option.
+- **Only Aspire.** Loses the ability to validate K8s manifests and the
+  production-like docker-compose setup. Rejected.
 - **Tye (predecessor of Aspire).** Deprecated by Microsoft. Rejected.
-
-- **Custom script that starts everything.** Works, but reinvents what
-  Aspire already provides. Rejected.
 
 ## References
 - SPEC-008
+- docs/environments.md
 - .NET Aspire documentation

@@ -90,6 +90,24 @@ Evening, done for today:
 
 ---
 
+---
+
+## Aspire environment
+
+One command, dashboard included.
+
+    dotnet run --project src/Hosts/FlightPlatform.AppHost
+
+Copy the API URL from the dashboard, then in another terminal:
+
+    cd frontend
+    $env:API_TARGET = "http://localhost:<port>"
+    npm run dev
+
+Stop: Ctrl+C in the AppHost terminal.
+
+Best for: getting observability without opening Jaeger/Grafana, or
+starting everything with a single command.
 ## Full list of scripts
 
 | Script                     | Purpose                                       |

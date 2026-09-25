@@ -443,57 +443,51 @@ dotnet test tests/Bookings.UnitTests
 
 ## Environments
 
-The platform runs in two development environments. Both use the same
-application artifacts and differ only in where the backend services are
-hosted.
+Three local run options. Pick based on the task.
 
-### Local (backend from IDE, infrastructure from docker-compose)
+| Option | Backend | Frontend | Best for |
+|--------|---------|----------|----------|
+| **Local IDE** | `dotnet run` from Visual Studio | `npm run dev:local` | Debugging the API, breakpoints |
+| **Kubernetes (kind)** | kind cluster, Helm chart | `npm run dev:k8s` | Validating K8s manifests, demos |
+| **Aspire** | Aspire AppHost, all services + dashboard | `npm run dev` with API URL | Fast dev loop, built-in observability |
 
-From the repository root:
+### Local IDE
 
     docker compose up -d
-
-Open the solution in Visual Studio, set `FlightsPlatform.Api` as the
-startup project, press F5. Then in a separate terminal:
+    # then press F5 in Visual Studio (FlightsPlatform.Api)
 
     cd frontend
     npm run dev:local
 
-Open `http://localhost:4200`.
-
 ### Kubernetes (kind)
 
-From the repository root:
-
-    docker compose down
     helm upgrade --install flights ./chart -f ./chart/values-dev.yaml -n flights-platform --create-namespace
     kubectl get pods -n flights-platform --watch
-
-Once pods are Running, in a separate terminal:
 
     cd frontend
     npm run dev:k8s
 
-Open `http://localhost:4200`.
+### Aspire
 
-### Shortcuts
+    dotnet run --project src/Hosts/FlightPlatform.AppHost
+    # copy the API URL from the dashboard
 
-For daily use, use the helper scripts:
+    cd frontend
+    $env:API_TARGET = "http://localhost:<port-from-dashboard>"
+    npm run dev
 
-    .\scripts\dev-local.ps1
-    .\scripts\dev-k8s.ps1
+### Helper scripts
+
+    .\scripts\dev-local.ps1     # local IDE environment
+    .\scripts\dev-k8s.ps1       # K8s environment
     .\scripts\stop-local.ps1
     .\scripts\stop-k8s.ps1
 
-Full command reference in [`docs/environments.md`](docs/environments.md).
-Lazy one-pager in [`docs/quickstart.md`](docs/quickstart.md).
-
 ### Full instructions
 
-- [`docs/environments.md`](docs/environments.md) - startup, shutdown,
-  rebuild, and switching between environments.
-- [`frontend/README.md`](frontend/README.md) - SPA-specific setup and
-  scripts.
+- [`docs/environments.md`](docs/environments.md) - reference.
+- [`docs/quickstart.md`](docs/quickstart.md) - daily shortcuts.
+- [`frontend/README.md`](frontend/README.md) - SPA setup.
 ## End-to-end walkthrough
 
 1. **Airports** → click **Sync from source**.
@@ -590,7 +584,7 @@ removes one more coupling from the current single-process deployment.
       so modules stop calling each other synchronously
 - [x] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
       see each future service's traces, metrics, and logs
-- [ ] **Phase 8** — Containerization + Kubernetes + .NET Aspire: each module
+- [x] **Phase 8** - Containerization + Kubernetes + .NET Aspire
       becomes a deployment unit
 - [ ] **Phase 9** — Final polish, demo scenarios
 
