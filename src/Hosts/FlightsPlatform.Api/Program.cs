@@ -2,10 +2,6 @@ using Bookings.Api;
 using Bookings.Application;
 using Bookings.Infrastructure;
 using Bookings.Infrastructure.Persistence;
-using FlightCatalog.Api;
-using FlightCatalog.Application;
-using FlightCatalog.Infrastructure;
-using FlightCatalog.Infrastructure.Persistence;
 using FlightsPlatform.Api.Endpoints;
 using FlightsPlatform.Api.Messaging;
 using FlightsPlatform.Application.Abstractions;
@@ -62,7 +58,7 @@ try
 
     builder.Services.AddHealthChecks()
         .AddNpgSql(
-            builder.Configuration.GetConnectionString("FlightCatalog")!,
+            builder.Configuration.GetConnectionString("Bookings")!,
             name: "postgres",
             tags: new[] { "ready" })
         .AddRedis(
@@ -73,7 +69,6 @@ try
     builder.Services.AddMediatR(cfg =>
     {
         cfg.RegisterServicesFromAssemblies(
-            typeof(FlightCatalog.Application.DependencyInjection).Assembly,
             typeof(Bookings.Application.DependencyInjection).Assembly);
 
         cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
@@ -82,8 +77,6 @@ try
     });
 
     builder.Services.AddRedisInfrastructure(builder.Configuration);
-    builder.Services.AddFlightCatalogApplication();
-    builder.Services.AddFlightCatalogInfrastructure(builder.Configuration);
     builder.Services.AddBookingsApplication();
     builder.Services.AddBookingsInfrastructure(builder.Configuration);
 
@@ -120,6 +113,39 @@ try
         });
     });
 
+    builder.Services.AddHttpClient<FlightsPlatform.Api.External.FlightCatalogDashboardClient>(client =>
+    {
+        client.BaseAddress = new Uri(
+            builder.Configuration["FlightCatalog:BaseUrl"] ?? "https://localhost:50944");
+    });
+    builder.Services.AddReverseProxy()
+        .LoadFromMemory(
+            routes: new[]
+            {
+                new Yarp.ReverseProxy.Configuration.RouteConfig
+                {
+                    RouteId = "flight-catalog",
+                    ClusterId = "flight-catalog",
+                    Match = new Yarp.ReverseProxy.Configuration.RouteMatch
+                    {
+                        Path = "/flight-catalog/{**catch-all}"
+                    }
+                }
+            },
+            clusters: new[]
+            {
+                new Yarp.ReverseProxy.Configuration.ClusterConfig
+                {
+                    ClusterId = "flight-catalog",
+                    Destinations = new Dictionary<string, Yarp.ReverseProxy.Configuration.DestinationConfig>
+                    {
+                        ["primary"] = new Yarp.ReverseProxy.Configuration.DestinationConfig
+                        {
+                            Address = builder.Configuration["FlightCatalog:BaseUrl"] ?? "https://localhost:50944"
+                        }
+                    }
+                }
+            });
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())
@@ -156,8 +182,7 @@ try
 
     app.UseHttpsRedirection();
     app.MapControllers();
-    app.MapFlightCatalogEndpoints();
-    app.MapAirportEndpoints();
+    app.MapReverseProxy();
     app.MapBookingsEndpoints();
     app.MapDashboardEndpoints();
 
@@ -189,8 +214,6 @@ try
 
     using (var scope = app.Services.CreateScope())
     {
-        var fcDb = scope.ServiceProvider.GetRequiredService<FlightCatalogDbContext>();
-        await fcDb.Database.MigrateAsync();
 
         var bkDb = scope.ServiceProvider.GetRequiredService<BookingDbContext>();
         await bkDb.Database.MigrateAsync();

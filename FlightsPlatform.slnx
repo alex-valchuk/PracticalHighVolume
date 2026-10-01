@@ -10,6 +10,7 @@
   </Folder>
   <Folder Name="/src/Hosts/">
     <Project Path="src/Hosts/FlightsPlatform.AppHost/FlightsPlatform.AppHost.csproj" />
+    <Project Path="src/Hosts/FlightCatalog.Service/FlightCatalog.Service.csproj" />
     <Project Path="src/Hosts/FlightsPlatform.Api/FlightsPlatform.Api.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />

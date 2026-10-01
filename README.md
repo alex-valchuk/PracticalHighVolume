@@ -586,7 +586,17 @@ removes one more coupling from the current single-process deployment.
       see each future service's traces, metrics, and logs
 - [x] **Phase 8** - Containerization + Kubernetes + .NET Aspire
       becomes a deployment unit
-- [ ] **Phase 9** — Final polish, demo scenarios
+- [x] **Phase 9** - Extract FlightCatalog into a standalone service (Domain/Application untouched)
+
+> **A note on Phase 9.**
+> Phase 9 is a demonstration of service-extraction mechanics on a small
+> scale. In a real system this step needs a concrete driver (independent
+> deploy cadence, independent scaling profile, fault isolation,
+> regulatory boundary, or organisational ownership), not a general wish
+> to be "more microservices". Without a driver, extraction adds cost
+> without benefit. [ADR-010](docs/adr/ADR-010-extract-flight-catalog.md)
+> documents both the mechanics applied here and the criteria for when
+> the same move would be the wrong call.
 
 ---
 
