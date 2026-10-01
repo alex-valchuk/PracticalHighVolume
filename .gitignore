@@ -435,3 +435,14 @@ api-log.txt
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local
+
+# Phase 9 wrap-up
+*.bak
+*.bak-*
+**/logs/*.log
+.env.local
+
+
+# Phase 9 wrap-up
+**/logs/*.log
+

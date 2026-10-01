@@ -1,15 +1,24 @@
 using Bookings.Application.Abstractions;
-using Bookings.Infrastructure.Integration.FlightCatalog;
+using Bookings.Infrastructure.External;
 using Bookings.Infrastructure.Integration.Payments;
+using Bookings.Infrastructure.External;
 using Bookings.Infrastructure.Options;
+using Bookings.Infrastructure.External;
 using Bookings.Infrastructure.Persistence;
+using Bookings.Infrastructure.External;
 using Bookings.Infrastructure.Persistence.Repositories;
+using Bookings.Infrastructure.External;
 using Bookings.Infrastructure.Persistence.Services;
+using Bookings.Infrastructure.External;
 using Microsoft.EntityFrameworkCore;
+using Bookings.Infrastructure.External;
 using Microsoft.Extensions.Configuration;
+using Bookings.Infrastructure.External;
 using Microsoft.Extensions.DependencyInjection;
+using Bookings.Infrastructure.External;
 using Npgsql;
 
+using Bookings.Infrastructure.External;
 namespace Bookings.Infrastructure;
 
 public static class DependencyInjection
@@ -31,7 +40,13 @@ public static class DependencyInjection
         services.AddScoped<IBookingReadRepository, BookingReadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        services.AddScoped<IFlightCatalogClient, FlightCatalogClient>();
+        services.AddHttpClient<IFlightCatalogClient, HttpFlightCatalogClient>(client =>
+        {
+            client.BaseAddress = new Uri(
+                configuration["FlightCatalog:BaseUrl"]
+                ?? throw new InvalidOperationException(
+                    "Configuration key 'FlightCatalog:BaseUrl' is required for HttpFlightCatalogClient."));
+        });
 
         services.Configure<PaymentOptions>(configuration.GetSection(PaymentOptions.SectionName));
         services.AddSingleton<PaymentSimulationState>();
