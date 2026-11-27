@@ -236,7 +236,7 @@ flowchart TB
 - **Standalone, no NgModules** — modern Angular, less boilerplate.
 - **Zoneless change detection** — signals drive the UI.
 - **Dev proxy, not CORS** — `/api/*` → `https://localhost:50943/*` via
-  `proxy.conf.json`. CORS on the backend is enabled **only in Development**.
+  `proxy.conf.js` (env-driven). CORS on the backend is enabled **only in Development**.
 - **No NgRx / Akita (yet)** — services + `signal()` cover the current
   cross-feature state without a state-management library.
 - **API types are hand-written** — `core/api/models/*.ts` mirror backend
@@ -267,21 +267,17 @@ layers**.
 ```mermaid
 flowchart TB
     GW["API Gateway / BFF<br/>YARP"]
-
     subgraph Svc["Extracted services (future)"]
         FCS["FlightCatalog Service"]
         BKS["Bookings Service"]
         PRS["Pricing Service"]
     end
-
     MQ["RabbitMQ / MassTransit<br/>Event bus · Outbox pattern"]
-
     subgraph Wk["Background workers"]
         NW["Notification Worker"]
         AW["Analytics Worker"]
         PS["Payment Simulator"]
     end
-
     subgraph Infra["Infrastructure layer"]
         PG[("PostgreSQL")]
         RD[("Redis<br/>cache · distributed locks")]
@@ -289,7 +285,6 @@ flowchart TB
         OT["OpenTelemetry"]
         GR["Grafana · Prometheus"]
     end
-
     GW --> FCS
     GW --> BKS
     GW --> PRS
@@ -371,7 +366,7 @@ _List of bookings with status and quick actions._
 | UI library           | PrimeNG 22 + PrimeIcons                       |
 | Language             | TypeScript (strict mode)                      |
 | Reactive             | RxJS + Angular signals                        |
-| Dev workflow         | Angular CLI + dev proxy (`proxy.conf.json`)   |
+| Dev workflow         | Angular CLI + dev proxy (`proxy.conf.js`)     |
 
 ### Infrastructure
 
@@ -404,6 +399,8 @@ from the Postgres Pro archive once:
 2. `docker cp .\postgres-demo-big.zip flights-postgres:/tmp/`
 3. `docker exec -i flights-postgres bash -c "unzip -p /tmp/postgres-demo-big.zip | psql -U flights -d postgres"`
 
+(Adjust the host unzip/copy steps to your OS shell as needed.)
+
 ### 2. Run the backend
 
 ```bash
@@ -425,8 +422,7 @@ npm start
 
 - SPA: <http://localhost:4200>
 
-The dev proxy maps `/api/*` to `https://localhost:50943/*` — no CORS
-configuration needed in development.
+The dev proxy maps `/api/*` to the configured backend target (see `frontend/README.md`).
 
 ### 4. Run tests
 
@@ -447,47 +443,31 @@ Three local run options. Pick based on the task.
 
 | Option | Backend | Frontend | Best for |
 |--------|---------|----------|----------|
-| **Local IDE** | `dotnet run` from Visual Studio | `npm run dev:local` | Debugging the API, breakpoints |
-| **Kubernetes (kind)** | kind cluster, Helm chart | `npm run dev:k8s` | Validating K8s manifests, demos |
-| **Aspire** | Aspire AppHost, all services + dashboard | `npm run dev` with API URL | Fast dev loop, built-in observability |
+| **Local IDE** | `dotnet run` from Visual Studio or CLI | `npm start` | Debugging the API, breakpoints |
+| **Kubernetes (kind)** | kind cluster, Helm chart | `npm run dev:k8s` (if configured) or set `API_TARGET` | Validating K8s manifests, demos |
+| **Aspire** | Aspire AppHost, all services + dashboard | `npm run dev` with `API_TARGET` | Fast dev loop, built-in observability |
 
-### Local IDE
+### Helper scripts (recommended on Windows)
 
-    docker compose up -d
-    # then press F5 in Visual Studio (FlightsPlatform.Api)
+Convenience scripts live in `scripts/` (PowerShell):
 
-    cd frontend
-    npm run dev:local
+- `scripts/dev-local.ps1` — start local infra (`docker compose up -d`) and print next steps
+- `scripts/stop-local.ps1` — stop local infra (`docker compose down`)
+- `scripts/dev-k8s.ps1` — build/load images and deploy via Helm (see script output)
+- `scripts/stop-k8s.ps1` — uninstall Helm release / optional cluster cleanup
 
-### Kubernetes (kind)
+Run them from the repository root in PowerShell, for example:
 
-    helm upgrade --install flights ./chart -f ./chart/values-dev.yaml -n flights-platform --create-namespace
-    kubectl get pods -n flights-platform --watch
-
-    cd frontend
-    npm run dev:k8s
-
-### Aspire
-
-    dotnet run --project src/Hosts/FlightPlatform.AppHost
-    # copy the API URL from the dashboard
-
-    cd frontend
-    $env:API_TARGET = "http://localhost:<port-from-dashboard>"
-    npm run dev
-
-### Helper scripts
-
-    .\scripts\dev-local.ps1     # local IDE environment
-    .\scripts\dev-k8s.ps1       # K8s environment
-    .\scripts\stop-local.ps1
-    .\scripts\stop-k8s.ps1
+```powershell
+.\scripts\dev-local.ps1
+```
 
 ### Full instructions
 
 - [`docs/environments.md`](docs/environments.md) - reference.
 - [`docs/quickstart.md`](docs/quickstart.md) - daily shortcuts.
 - [`frontend/README.md`](frontend/README.md) - SPA setup.
+
 ## End-to-end walkthrough
 
 1. **Airports** → click **Sync from source**.
@@ -521,8 +501,8 @@ Three local run options. Pick based on the task.
 ```
 src/
   BuildingBlocks/
-    FlightsPlatform.SharedKernel/            Entity · ValueObject · AggregateRoot · IDomainEvent
-    FlightsPlatform.Application.Abstractions/ Result<T>
+    FlightsPlatform.SharedKernel/
+    FlightsPlatform.Application.Abstractions/
   Modules/
     FlightCatalog/
       FlightCatalog.Domain/
@@ -535,29 +515,27 @@ src/
       Bookings.Infrastructure/
       Bookings.Api/
   Hosts/
-    FlightsPlatform.Api/                     host · DI · endpoints · migrations
+    FlightsPlatform.Api/
 
 tests/
   FlightCatalog.UnitTests/
   Bookings.UnitTests/
+  FlightsPlatform.IntegrationTests/
 
 frontend/
   src/app/
-    core/                                    api · services · layout
-    features/                                dashboard · airports · flights · bookings
+    core/
+    features/
 
 docs/
-  adr/                                       Architecture Decision Records
-  specs/                                     Spec-driven development docs
-  screenshots/                               UI screenshots
+  adr/
+  specs/
+  screenshots/
 ```
 
 ---
 
 ## Architecture Decision Records
-
-Every significant architectural decision is documented. New decisions get
-an ADR before any code.
 
 - [ADR-001 — Modular monolith](docs/adr/ADR-001-modular-monolith.md)
 - [ADR-002 — CQRS with split read/write repositories](docs/adr/ADR-002-cqrs-split.md)
@@ -571,32 +549,17 @@ an ADR before any code.
 
 ## Roadmap
 
-The roadmap is not a feature list — it is a **migration plan from a
-modular monolith to independently deployable microservices**. Each phase
-removes one more coupling from the current single-process deployment.
-
 - [x] **Phase 1** — Domain + Clean Architecture (FlightCatalog)
-- [x] **Phase 2** — Integration with external source (`bookings` schema) via ACL
+- [x] **Phase 2** — Integration with external source via ACL
 - [x] **Phase 3** — Bookings module + saga with compensations
 - [x] **Phase 4** — Angular SPA
-- [x] **Phase 5** — Redis: distributed cache and locks, so modules can scale apart
-- [x] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox,
-      so modules stop calling each other synchronously
-- [x] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana, so we can
-      see each future service's traces, metrics, and logs
+- [x] **Phase 5** — Redis: distributed cache and locks
+- [x] **Phase 6** — Event-driven architecture: RabbitMQ + MassTransit + Outbox
+- [x] **Phase 7** — Observability: OpenTelemetry, Prometheus, Grafana
 - [x] **Phase 8** - Containerization + Kubernetes + .NET Aspire
-      becomes a deployment unit
-- [x] **Phase 9** - Extract FlightCatalog into a standalone service (Domain/Application untouched)
+- [x] **Phase 9** - Extract FlightCatalog into a standalone service (demo)
 
-> **A note on Phase 9.**
-> Phase 9 is a demonstration of service-extraction mechanics on a small
-> scale. In a real system this step needs a concrete driver (independent
-> deploy cadence, independent scaling profile, fault isolation,
-> regulatory boundary, or organisational ownership), not a general wish
-> to be "more microservices". Without a driver, extraction adds cost
-> without benefit. [ADR-010](docs/adr/ADR-010-extract-flight-catalog.md)
-> documents both the mechanics applied here and the criteria for when
-> the same move would be the wrong call.
+> See [ADR-010](docs/adr/ADR-010-extract-flight-catalog.md) for notes on extraction criteria.
 
 ---
 

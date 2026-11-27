@@ -47,10 +47,13 @@ From this directory:
 2. Copy the API URL from the Aspire dashboard (for example,
    `http://localhost:5234`).
 
-3. From this directory, start the SPA with that URL:
+3. From this directory, start the SPA with that URL (bash/zsh):
 
-       $env:API_TARGET = "http://localhost:5234"
-       npm run dev
+       API_TARGET="http://localhost:5234" npm run dev
+
+   On Windows PowerShell (optional):
+
+       $env:API_TARGET="http://localhost:5234"; npm run dev
 
 4. Open the browser:
 
@@ -58,12 +61,16 @@ From this directory:
 
 The `API_TARGET` value is shown in the Aspire dashboard under the
 `flights-api` resource.
+
 ## Running against a custom backend
 
-Set the target explicitly, then start:
+Set the target explicitly, then start (bash/zsh):
 
-    $env:API_TARGET = "https://api.staging.example.com"
-    npm run dev
+    API_TARGET="https://api.staging.example.com" npm run dev
+
+On Windows PowerShell (optional):
+
+    $env:API_TARGET="https://api.staging.example.com"; npm run dev
 
 Alternatively, create `frontend/.env`:
 
